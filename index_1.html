@@ -1,0 +1,969 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Say &amp; Do</title>
+</head>
+<body>
+<div id="app">Loading…</div>
+<script>
+(function(){
+  'use strict';
+
+  var TZ = 'America/Los_Angeles';
+
+  var CSS_TEXT = `
+  :root{
+    --bg:#EEF1F4; --surface:#FFFFFF; --surface-2:#F7F9FB; --text:#1E2430; --text-muted:#5B6472;
+    --border:#DBE1E7; --accent-am:#C97F2E; --accent-pm:#6A5ACD;
+    --accent-am-soft:#F3E3CD; --accent-pm-soft:#E4E1F8;
+    --done:#3F9670; --done-soft:#DCEEE5; --danger:#B14A3E; --danger-soft:#F5DEDC; --ring:#8891A0;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#10141F; --surface:#171C2A; --surface-2:#1C2233; --text:#ECEEF3; --text-muted:#9AA3B2;
+      --border:#2B3244; --accent-am:#E7A54B; --accent-pm:#9C90EA;
+      --accent-am-soft:#3B2C16; --accent-pm-soft:#2A2650;
+      --done:#57B58C; --done-soft:#163A2C; --danger:#DD8B7E; --danger-soft:#3B211E; --ring:#5B6472;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#10141F; --surface:#171C2A; --surface-2:#1C2233; --text:#ECEEF3; --text-muted:#9AA3B2;
+    --border:#2B3244; --accent-am:#E7A54B; --accent-pm:#9C90EA;
+    --accent-am-soft:#3B2C16; --accent-pm-soft:#2A2650;
+    --done:#57B58C; --done-soft:#163A2C; --danger:#DD8B7E; --danger-soft:#3B211E; --ring:#5B6472;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);}
+  body{
+    color:var(--text); font-family:'Karla',system-ui,-apple-system,sans-serif;
+    font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased;
+  }
+  #app{max-width:720px;margin:0 auto;padding:28px 20px 64px;}
+  .eyebrow{
+    font-family:'IBM Plex Mono',ui-monospace,monospace; font-size:11px; letter-spacing:.08em;
+    text-transform:uppercase; color:var(--text-muted); margin:0 0 4px;
+  }
+  h1{
+    font-family:'Fraunces',Georgia,serif; font-weight:600; font-size:34px; margin:0 0 2px;
+    text-wrap:balance; letter-spacing:-.01em;
+  }
+  .sub{color:var(--text-muted); font-size:14px; margin:0 0 22px;}
+  .header-row{display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;}
+  .streak{
+    font-family:'IBM Plex Mono',ui-monospace,monospace; background:var(--surface); border:1px solid var(--border);
+    border-radius:999px; padding:8px 16px; font-size:13px; white-space:nowrap; font-variant-numeric:tabular-nums;
+  }
+  .streak b{font-size:16px; margin-right:4px;}
+  .card{
+    background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:8px 4px;
+    margin-bottom:24px;
+  }
+  .section-title{
+    font-family:'Fraunces',Georgia,serif; font-weight:600; font-size:16px; margin:14px 18px 8px;
+  }
+  .confirm-overlay{
+    position:fixed; inset:0; background:rgba(16,20,31,.45); display:flex; align-items:center; justify-content:center;
+    padding:20px; z-index:20;
+  }
+  .confirm-box{
+    background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:20px 22px;
+    max-width:300px; width:100%; box-shadow:0 12px 32px rgba(0,0,0,.25);
+  }
+  .confirm-text{margin:0 0 16px; font-size:14.5px; line-height:1.5;}
+  .confirm-actions{display:flex; gap:8px; justify-content:flex-end;}
+  .confirm-actions button{
+    font-family:'Karla',sans-serif; font-weight:700; font-size:13px; border-radius:9px; padding:8px 14px; cursor:pointer;
+    border:1px solid var(--border);
+  }
+  .confirm-cancel{background:var(--surface-2); color:var(--text);}
+  .confirm-remove{background:var(--danger); border-color:var(--danger); color:#fff;}
+  .confirm-cancel:focus-visible, .confirm-remove:focus-visible{outline:2px solid var(--ring); outline-offset:2px;}
+  .cell-group{display:flex; gap:6px;}
+  .pill{
+    font-family:'Karla',sans-serif; font-size:12px; font-weight:700; border-radius:999px; border:1px solid var(--border);
+    background:var(--surface-2); color:var(--text-muted); padding:6px 10px; cursor:pointer;
+    display:inline-flex; align-items:center; gap:4px; transition:background .12s ease, color .12s ease, border-color .12s ease;
+  }
+  .pill:focus-visible{outline:2px solid var(--ring); outline-offset:2px;}
+  .pill.miss.on{background:var(--danger-soft); border-color:var(--danger); color:var(--danger);}
+  .pill.pm.on{background:var(--done-soft); border-color:var(--done); color:var(--done);}
+  .task-name{
+    cursor:pointer; user-select:none; -webkit-user-select:none; touch-action:manipulation;
+    border-radius:6px; padding:2px 6px; margin:-2px -6px; transition:background .18s ease, color .18s ease;
+  }
+  .task-name.pressing{background:var(--danger-soft); color:var(--danger);}
+  .empty{padding:22px 18px; color:var(--text-muted); font-size:14px; line-height:1.6;}
+  .add-row{display:flex; gap:8px; padding:12px 14px 14px; border-top:1px solid var(--border); flex-wrap:wrap;}
+  .assignee-toggle{display:flex; gap:4px; background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:3px;}
+  .assignee-btn{
+    font-family:'Karla',sans-serif; font-size:12px; font-weight:700; border:none; background:transparent; color:var(--text-muted);
+    border-radius:7px; padding:6px 10px; cursor:pointer;
+  }
+  .assignee-btn.on{background:var(--surface); color:var(--text); box-shadow:0 1px 2px rgba(0,0,0,.08);}
+  .assignee-btn:focus-visible{outline:2px solid var(--ring);}
+  .score-table{width:100%; border-collapse:collapse; margin:2px 4px 14px; font-family:'IBM Plex Mono',monospace;}
+  .score-table th, .score-table td{padding:8px 14px; text-align:left; font-size:13px; font-variant-numeric:tabular-nums;}
+  .score-table thead th{color:var(--text-muted); font-weight:500; font-size:11px; text-transform:uppercase; letter-spacing:.05em; border-bottom:1px solid var(--border);}
+  .score-table td:first-child{color:var(--text-muted); font-family:'Karla',sans-serif; font-size:13px;}
+  .score-table tbody tr + tr td{border-top:1px solid var(--border);}
+  .score-table td:not(:first-child), .score-table th:not(:first-child){text-align:right;}
+  .panes{display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:2px;}
+  .pane{padding:4px 0;}
+  .pane + .pane{border-top:1px solid var(--border);}
+  @media (min-width:560px){
+    .pane + .pane{border-top:none; border-left:1px solid var(--border);}
+  }
+  .pane-header{
+    display:flex; align-items:center; gap:8px; padding:8px 16px 10px;
+  }
+  .pane-header input{
+    font-family:'Fraunces',Georgia,serif; font-weight:600; font-size:17px; border:none; background:transparent;
+    color:var(--text); width:100%; padding:2px 0;
+  }
+  .pane-header input:focus-visible{outline:2px solid var(--ring); outline-offset:2px; border-radius:4px;}
+  .person-dot{width:9px; height:9px; border-radius:50%;}
+  .pane-subhead{
+    font-family:'IBM Plex Mono',monospace; font-size:10px; text-transform:uppercase; letter-spacing:.06em;
+    color:var(--text-muted); padding:12px 16px 4px;
+  }
+  .task-row{
+    display:grid; grid-template-columns:1fr auto auto; align-items:center; gap:6px;
+    padding:8px 16px; border-top:1px solid var(--border);
+  }
+  .pane-header + .task, .pane-header + .empty{border-top:none;}
+  .task:first-child .task-row{border-top:none;}
+  .task-name{font-weight:500; font-size:14px;}
+  .pill.weekly{padding:6px 12px;}
+  .pane .empty{padding:6px 16px 16px;}
+  .note-toggle{
+    background:none; border:none; font-size:13px; cursor:pointer; padding:4px 6px; border-radius:6px; opacity:.5;
+    line-height:1;
+  }
+  .note-toggle:hover{opacity:1; background:var(--surface-2);}
+  .note-toggle.has-note{opacity:1;}
+  .note-toggle:focus-visible{outline:2px solid var(--ring);}
+  .note-panel{padding:0 16px 10px;}
+  .note-panel[hidden]{display:none;}
+  .note-banner{
+    display:flex; align-items:center; justify-content:space-between; width:100%;
+    font-family:'IBM Plex Mono',monospace; font-size:11px; text-transform:uppercase; letter-spacing:.05em;
+    color:var(--text-muted); background:none; border:none; padding:4px 2px 6px; cursor:pointer;
+  }
+  .note-banner:hover{color:var(--text);}
+  .note-banner:focus-visible{outline:2px solid var(--ring);}
+  .note-banner .chev{font-size:10px;}
+  .note-panel textarea{
+    width:100%; min-height:52px; resize:vertical; font-family:'Karla',sans-serif; font-size:13px;
+    padding:8px 10px; border-radius:8px; border:1px solid var(--border); background:var(--surface-2); color:var(--text);
+    box-sizing:border-box;
+  }
+  .note-panel textarea:focus-visible{outline:2px solid var(--ring); outline-offset:1px;}
+  .add-row input{
+    flex:1; font-family:'Karla',sans-serif; font-size:14px; padding:9px 12px; border-radius:10px;
+    border:1px solid var(--border); background:var(--surface-2); color:var(--text);
+  }
+  .add-row input:focus-visible{outline:2px solid var(--ring); outline-offset:1px;}
+  .add-row button{
+    font-family:'Karla',sans-serif; font-weight:700; font-size:13px; border:none; border-radius:10px;
+    background:var(--text); color:var(--bg); padding:0 16px; cursor:pointer;
+  }
+  .add-row button:disabled{opacity:.4; cursor:default;}
+  .history{display:flex; gap:6px; overflow-x:auto; padding:4px 2px 8px;}
+  .day-cell{
+    flex:0 0 auto; width:38px; height:44px; border-radius:9px; border:1px solid var(--border);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+  }
+  .day-cell .dow{font-family:'IBM Plex Mono',monospace; font-size:9px; color:var(--text-muted); text-transform:uppercase;}
+  .day-cell .num{font-family:'IBM Plex Mono',monospace; font-size:12px; font-variant-numeric:tabular-nums;}
+  .day-cell.today{border-color:var(--ring); border-width:2px;}
+  .legend{display:flex; align-items:center; gap:10px; font-size:11px; color:var(--text-muted); padding:0 4px 6px;}
+  .legend-swatch{width:10px; height:10px; border-radius:3px; display:inline-block; margin-right:4px; vertical-align:middle;}
+  footer{
+    display:flex; align-items:center; gap:10px; color:var(--text-muted); font-size:12px; margin-top:6px;
+    font-family:'IBM Plex Mono',monospace; flex-wrap:wrap;
+  }
+  .status-dot{width:7px; height:7px; border-radius:50%; background:var(--text-muted);}
+  .status-dot.ok{background:var(--done);}
+  .status-dot.busy{background:var(--accent-am);}
+  .status-dot.err{background:var(--danger);}
+  .settings-link{background:none; border:none; color:var(--text-muted); font-family:inherit; font-size:12px; cursor:pointer; text-decoration:underline; padding:0;}
+  .settings-link:hover{color:var(--text);}
+  @media (prefers-reduced-motion: reduce){ .pill{transition:none;} }
+
+  .setup-wrap{max-width:420px; margin:60px auto; padding:0 20px;}
+  .setup-card{background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:26px 24px;}
+  .setup-card h1{font-size:24px; margin:0 0 6px;}
+  .setup-card p{color:var(--text-muted); font-size:13.5px; line-height:1.6; margin:0 0 18px;}
+  .setup-field{margin-bottom:14px;}
+  .setup-field label{display:block; font-size:12px; font-weight:700; color:var(--text-muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:.04em;}
+  .setup-field input{
+    width:100%; font-family:'IBM Plex Mono',monospace; font-size:13px; padding:10px 12px; border-radius:9px;
+    border:1px solid var(--border); background:var(--surface-2); color:var(--text); box-sizing:border-box;
+  }
+  .setup-field input:focus-visible{outline:2px solid var(--ring); outline-offset:1px;}
+  .setup-actions{display:flex; align-items:center; gap:12px; margin-top:18px;}
+  .setup-actions button{
+    font-family:'Karla',sans-serif; font-weight:700; font-size:13.5px; border:none; border-radius:10px;
+    background:var(--text); color:var(--bg); padding:10px 18px; cursor:pointer;
+  }
+  .setup-actions button:disabled{opacity:.5; cursor:default;}
+  .setup-error{color:var(--danger); font-size:13px; margin-top:12px; line-height:1.5;}
+  `;
+
+  function esc(s){
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function genId(){
+    return 'h_' + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+  }
+
+  function todayKey(d){
+    d = d || new Date();
+    var parts = new Intl.DateTimeFormat('en-CA', {timeZone:TZ, year:'numeric', month:'2-digit', day:'2-digit'}).formatToParts(d);
+    var y,m,day;
+    parts.forEach(function(p){ if(p.type==='year')y=p.value; if(p.type==='month')m=p.value; if(p.type==='day')day=p.value; });
+    return y + '-' + m + '-' + day;
+  }
+
+  function addDaysToKey(key, delta){
+    var dt = new Date(key + 'T12:00:00');
+    dt.setDate(dt.getDate() + delta);
+    return todayKey(dt);
+  }
+
+  function dowLabel(key){
+    var dt = new Date(key + 'T12:00:00');
+    return new Intl.DateTimeFormat('en-US', {weekday:'short', timeZone:TZ}).format(dt).slice(0,2);
+  }
+
+  function dayNum(key){ return key.slice(8,10).replace(/^0/,''); }
+
+  function fullDate(key){
+    var dt = new Date(key + 'T12:00:00');
+    return new Intl.DateTimeFormat('en-US', {weekday:'long', month:'long', day:'numeric', timeZone:TZ}).format(dt);
+  }
+
+  function isWeekend(key){
+    var d = dowLabel(key);
+    return d === 'Sa' || d === 'Su';
+  }
+
+  function displayName(h, key){
+    return (h.weekendName && isWeekend(key)) ? h.weekendName : h.name;
+  }
+
+  var DOW_ORDER = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+
+  function weekKeyFor(key){
+    var idx = DOW_ORDER.indexOf(dowLabel(key));
+    var offsetFromMonday = (idx + 6) % 7;
+    return addDaysToKey(key, -offsetFromMonday);
+  }
+
+  function dailyHabits(state){
+    return state.habits.filter(function(h){ return h.cadence !== 'weekly'; });
+  }
+
+  function weeklyHabits(state){
+    return state.habits.filter(function(h){ return h.cadence === 'weekly'; });
+  }
+
+  function assigneePeople(state, h){
+    if (h.assignee === 'p1' || h.assignee === 'p2'){
+      var p = personByKey(state, h.assignee);
+      return p ? [p] : state.people;
+    }
+    return state.people;
+  }
+
+  function ensureCell(state, dateKey, habitId, personKey){
+    if (!state.days[dateKey]) state.days[dateKey] = {};
+    if (!state.days[dateKey][habitId]) state.days[dateKey][habitId] = {};
+    if (!state.days[dateKey][habitId][personKey]) state.days[dateKey][habitId][personKey] = {missed:false, done:false, note:''};
+    return state.days[dateKey][habitId][personKey];
+  }
+
+  function getCell(state, dateKey, habitId, personKey){
+    var d = state.days[dateKey];
+    if (!d || !d[habitId] || !d[habitId][personKey]) return {missed:false, done:false, note:''};
+    return d[habitId][personKey];
+  }
+
+  function pruneOldDays(state){
+    var cutoff = addDaysToKey(todayKey(), -90);
+    Object.keys(state.days).forEach(function(k){
+      if (k < cutoff) delete state.days[k];
+    });
+  }
+
+  function dayCompletion(state, dateKey){
+    var total = 0, done = 0, engaged = false;
+    dailyHabits(state).forEach(function(h){
+      assigneePeople(state, h).forEach(function(p){
+        var c = getCell(state, dateKey, h.id, p.key);
+        if (c.done || c.missed){ engaged = true; total++; if (c.done) done++; }
+      });
+    });
+    return {total:total, done:done, engaged:engaged, ratio: total ? done/total : 0};
+  }
+
+  function pointsForDay(state, dateKey, personKey){
+    var pts = 0;
+    state.habits.forEach(function(h){
+      var relevant = assigneePeople(state, h).some(function(p){ return p.key === personKey; });
+      if (!relevant) return;
+      var c = getCell(state, dateKey, h.id, personKey);
+      if (c.done) pts += (h.points || 1);
+    });
+    return pts;
+  }
+
+  function pointsForKeys(state, personKey, keys){
+    return keys.reduce(function(sum, k){ return sum + pointsForDay(state, k, personKey); }, 0);
+  }
+
+  function lastNKeys(n){
+    var out = [];
+    var t = todayKey();
+    for (var i = 0; i < n; i++) out.push(addDaysToKey(t, -i));
+    return out;
+  }
+
+  function computeStreak(state){
+    if (!state.habits.length) return 0;
+    var streak = 0;
+    var key = addDaysToKey(todayKey(), -1);
+    var guard = 0;
+    while (guard < 400){
+      guard++;
+      var c = dayCompletion(state, key);
+      if (!c.engaged || c.done < c.total) break;
+      streak++;
+      key = addDaysToKey(key, -1);
+    }
+    return streak;
+  }
+
+  function personByKey(state, key){ return state.people.find(function(p){ return p.key===key; }); }
+
+  function habitsFor(habitList, personKey){
+    return habitList.filter(function(h){ return h.assignee === 'both' || h.assignee === personKey; });
+  }
+
+  function normalizeState(s){
+    s = s || {};
+    if (!s.people) s.people = [{key:'p1',name:'Khaled'},{key:'p2',name:'Nat'}];
+    if (!s.habits) s.habits = [];
+    if (!s.days) s.days = {};
+    return s;
+  }
+
+  // ==========================================================================
+  // Config: which shared data store this browser talks to (per-device, one-time
+  // setup). Nothing secret ships in this file — each person pastes it in once.
+  // ==========================================================================
+  var CONFIG_KEY = 'sayAndDo.config.v1';
+  function loadConfig(){
+    try{
+      var raw = localStorage.getItem(CONFIG_KEY);
+      return raw ? JSON.parse(raw) : null;
+    }catch(e){ return null; }
+  }
+  function saveConfigLocal(cfg){
+    try{ localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg)); }catch(e){}
+  }
+  function clearConfigLocal(){
+    try{ localStorage.removeItem(CONFIG_KEY); }catch(e){}
+  }
+
+  var CACHE_KEY = 'sayAndDo.cache.v1';
+  function loadCache(){
+    try{
+      var raw = localStorage.getItem(CACHE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    }catch(e){ return null; }
+  }
+  function saveCache(state){
+    try{ localStorage.setItem(CACHE_KEY, JSON.stringify(state)); }catch(e){}
+  }
+
+  // ==========================================================================
+  // Pending-edit recovery: if a save can't reach the shared store right now
+  // (offline, a slow network, a bad key), the change stays queued here so the
+  // next successful load re-applies it on top of the latest data and retries,
+  // instead of silently losing it.
+  // ==========================================================================
+  var PENDING_KEY = 'sayAndDo.pendingOps.v1';
+  function loadPendingOps(){
+    try{
+      var raw = localStorage.getItem(PENDING_KEY);
+      return raw ? JSON.parse(raw) : {};
+    }catch(e){ return {}; }
+  }
+  function savePendingOps(ops){
+    try{ localStorage.setItem(PENDING_KEY, JSON.stringify(ops)); }catch(e){}
+  }
+  function queueOp(key, op){
+    var ops = loadPendingOps();
+    ops[key] = op;
+    savePendingOps(ops);
+  }
+  function clearPendingOps(){
+    try{ localStorage.removeItem(PENDING_KEY); }catch(e){}
+  }
+  function applyPendingOps(state){
+    var ops = loadPendingOps();
+    var keys = Object.keys(ops);
+    if (!keys.length) return false;
+    keys.forEach(function(k){
+      var op = ops[k];
+      if (op.type === 'cell'){
+        var cell = ensureCell(state, op.dateKey, op.habitId, op.personKey);
+        cell[op.field] = op.value;
+        if (op.field === 'done' && op.value) cell.missed = false;
+        if (op.field === 'missed' && op.value) cell.done = false;
+      } else if (op.type === 'note'){
+        var cell2 = ensureCell(state, op.dateKey, op.habitId, op.personKey);
+        cell2.note = (op.text || '').slice(0, 500);
+      } else if (op.type === 'remove'){
+        state.habits = state.habits.filter(function(h){ return h.id !== op.habitId; });
+      } else if (op.type === 'add'){
+        if (!state.habits.some(function(h){ return h.id === op.habit.id; })) state.habits.push(op.habit);
+      } else if (op.type === 'rename'){
+        var p = state.people.find(function(pp){ return pp.key === op.key; });
+        if (p) p.name = op.name;
+      }
+    });
+    return true;
+  }
+
+  // ==========================================================================
+  // Remote store (jsonbin.io). GET/PUT the whole record — simple, and fine for
+  // two people checking a handful of boxes a day.
+  // ==========================================================================
+  var CONFIG = null;
+
+  function binUrl(){ return 'https://api.jsonbin.io/v3/b/' + CONFIG.binId; }
+
+  async function fetchRemote(){
+    var res = await fetch(binUrl() + '/latest', {
+      headers: { 'X-Master-Key': CONFIG.apiKey, 'X-Bin-Meta': 'false' }
+    });
+    if (!res.ok){ var err = new Error('http_' + res.status); err.status = res.status; throw err; }
+    return await res.json();
+  }
+
+  async function putRemote(state){
+    var res = await fetch(binUrl(), {
+      method: 'PUT',
+      headers: { 'X-Master-Key': CONFIG.apiKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify(state)
+    });
+    if (!res.ok){ var err = new Error('http_' + res.status); err.status = res.status; throw err; }
+    return await res.json();
+  }
+
+  // ==========================================================================
+  // App state / status
+  // ==========================================================================
+  var STATE = null;
+  var status = 'idle'; // idle|loading|saving|saved|offline|error
+  var saveTimer = null;
+  var pollTimer = null;
+
+  function setStatus(s){
+    status = s;
+    var dot = document.getElementById('status-dot');
+    var label = document.getElementById('status-label');
+    if (!dot || !label) return;
+    dot.className = 'status-dot' + (s==='saved' ? ' ok' : (s==='saving'||s==='loading'||s==='syncing') ? ' busy' : (s==='error') ? ' err' : '');
+    var text = {
+      idle:'Ready', loading:'Loading…', syncing:'Checking for updates…', saving:'Saving…', saved:'Saved',
+      error:'Save failed — will retry', offline:'Offline — showing last saved copy'
+    }[s] || s;
+    label.textContent = text;
+  }
+
+  function isEditingNow(){
+    var el = document.activeElement;
+    return !!(el && (el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && el.type === 'text')));
+  }
+
+  function scheduleSave(){
+    setStatus('saving');
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(flushSave, 600);
+  }
+
+  async function flushSave(){
+    if (!CONFIG) return;
+    var fresh;
+    try{
+      var data = await fetchRemote();
+      fresh = normalizeState(data.record || data);
+    }catch(e){
+      fresh = STATE ? JSON.parse(JSON.stringify(STATE)) : (loadCache() ? normalizeState(loadCache()) : normalizeState({}));
+    }
+    applyPendingOps(fresh);
+    pruneOldDays(fresh);
+    STATE = fresh;
+    saveCache(STATE);
+    render();
+    try{
+      await putRemote(STATE);
+      clearPendingOps();
+      setStatus('saved');
+    }catch(e){
+      setStatus('error');
+    }
+  }
+
+  async function refreshFromRemote(isInitial){
+    if (!isInitial && isEditingNow()) return; // don't yank focus mid-typing
+    setStatus(isInitial ? 'loading' : 'syncing');
+    try{
+      var data = await fetchRemote();
+      var fresh = normalizeState(data.record || data);
+      var recovered = applyPendingOps(fresh);
+      STATE = fresh;
+      saveCache(STATE);
+      render();
+      setStatus('saved');
+      if (recovered) scheduleSave();
+    }catch(e){
+      if (!STATE){
+        var cached = loadCache();
+        if (cached){ STATE = normalizeState(cached); applyPendingOps(STATE); render(); }
+      }
+      setStatus('offline');
+    }
+  }
+
+  // ==========================================================================
+  // Mutations (instant local update + queue the op + debounce a save)
+  // ==========================================================================
+  function toggle(habitId, personKey, field){
+    var dateKey = todayKey();
+    var cell = ensureCell(STATE, dateKey, habitId, personKey);
+    cell[field] = !cell[field];
+    if (field === 'done' && cell.done) cell.missed = false;
+    if (field === 'missed' && cell.missed) cell.done = false;
+    queueOp('cell|' + dateKey + '|' + habitId + '|' + personKey + '|done',
+      {type:'cell', dateKey:dateKey, habitId:habitId, personKey:personKey, field:'done', value:cell.done});
+    queueOp('cell|' + dateKey + '|' + habitId + '|' + personKey + '|missed',
+      {type:'cell', dateKey:dateKey, habitId:habitId, personKey:personKey, field:'missed', value:cell.missed});
+    expandedNotes[habitId + ':' + personKey] = true;
+    render();
+    scheduleSave();
+  }
+
+  var pendingAssignee = 'both';
+
+  function toggleWeekly(habitId, personKey){
+    var wKey = weekKeyFor(todayKey());
+    var cell = ensureCell(STATE, wKey, habitId, personKey);
+    cell.done = !cell.done;
+    queueOp('cell|' + wKey + '|' + habitId + '|' + personKey + '|done',
+      {type:'cell', dateKey:wKey, habitId:habitId, personKey:personKey, field:'done', value:cell.done});
+    expandedNotes[habitId + ':' + personKey] = true;
+    render();
+    scheduleSave();
+  }
+
+  var expandedNotes = {};
+
+  function setNote(dateKey, habitId, personKey, text){
+    var cell = ensureCell(STATE, dateKey, habitId, personKey);
+    cell.note = (text || '').slice(0, 500);
+    queueOp('note|' + dateKey + '|' + habitId + '|' + personKey,
+      {type:'note', dateKey:dateKey, habitId:habitId, personKey:personKey, text:cell.note});
+    scheduleSave();
+  }
+
+  var pendingCadence = 'daily';
+
+  function addHabit(name, assignee, cadence){
+    name = (name || '').trim();
+    if (!name) return;
+    var h = {id: genId(), name: name, assignee: assignee || 'both', points: 1};
+    if (cadence === 'weekly') h.cadence = 'weekly';
+    STATE.habits.push(h);
+    queueOp('add|' + h.id, {type:'add', habit:h});
+    pendingAssignee = 'both';
+    pendingCadence = 'daily';
+    render();
+    scheduleSave();
+  }
+
+  function removeHabit(id){
+    STATE.habits = STATE.habits.filter(function(h){ return h.id !== id; });
+    queueOp('remove|' + id, {type:'remove', habitId:id});
+    render();
+    scheduleSave();
+  }
+
+  var confirmRemoveId = null;
+  function requestRemove(id){ confirmRemoveId = id; render(); }
+  function cancelRemove(){ confirmRemoveId = null; render(); }
+  function confirmRemove(){
+    var id = confirmRemoveId;
+    confirmRemoveId = null;
+    if (id) removeHabit(id); else render();
+  }
+
+  function renamePerson(key, name){
+    name = (name || '').trim();
+    if (!name) return;
+    var p = STATE.people.find(function(p){ return p.key === key; });
+    if (p) p.name = name.slice(0, 24);
+    queueOp('rename|' + key, {type:'rename', key:key, name: p ? p.name : name.slice(0, 24)});
+    render();
+    scheduleSave();
+  }
+
+  // ==========================================================================
+  // Rendering
+  // ==========================================================================
+  function renderPane(person, accentVar, tKey, wKey){
+    var daily = habitsFor(dailyHabits(STATE), person.key);
+    var weekly = habitsFor(weeklyHabits(STATE), person.key);
+    var html = '<div class="pane">';
+    html += '<div class="pane-header"><span class="person-dot" style="background:var(' + accentVar + ')"></span>' +
+      '<input type="text" maxlength="24" value="' + esc(person.name) + '" data-rename="' + person.key + '" /></div>';
+    if (!daily.length && !weekly.length){
+      html += '<div class="empty">No habits yet for ' + esc(person.name) + '.</div>';
+    } else {
+      daily.forEach(function(h){
+        var c = getCell(STATE, tKey, h.id, person.key);
+        var noteKey = h.id + ':' + person.key;
+        html += '<div class="task">';
+        html += '<div class="task-row">' +
+          '<div class="task-name" data-longpress="' + h.id + '">' + esc(displayName(h, tKey)) + '</div>' +
+          '<div class="cell-group">' +
+          '<button type="button" class="pill miss' + (c.missed ? ' on' : '') + '" data-toggle="' + h.id + ':' + person.key + ':missed" title="Missed today">✕</button>' +
+          '<button type="button" class="pill pm' + (c.done ? ' on' : '') + '" data-toggle="' + h.id + ':' + person.key + ':done" title="Got it done">✓</button>' +
+          '</div>' +
+          '<button type="button" class="note-toggle' + (c.note ? ' has-note' : '') + '" data-note-toggle="' + noteKey + '" title="Notes">💬</button>' +
+          '</div>';
+        html += '<div class="note-panel" data-note-panel="' + noteKey + '"' + (expandedNotes[noteKey] ? '' : ' hidden') + '>' +
+          '<button type="button" class="note-banner" data-note-toggle="' + noteKey + '">Note for today <span class="chev">▲</span></button>' +
+          '<textarea data-note-input="' + h.id + ':' + person.key + ':' + tKey + '" placeholder="Add a note about today...">' + esc(c.note || '') + '</textarea>' +
+          '</div>';
+        html += '</div>';
+      });
+      if (weekly.length){
+        html += '<div class="pane-subhead">This week</div>';
+        weekly.forEach(function(h){
+          var c = getCell(STATE, wKey, h.id, person.key);
+          var noteKey = h.id + ':' + person.key;
+          html += '<div class="task">';
+          html += '<div class="task-row">' +
+            '<div class="task-name" data-longpress="' + h.id + '">' + esc(displayName(h, tKey)) + '</div>' +
+            '<button type="button" class="pill pm weekly' + (c.done ? ' on' : '') + '" data-toggle-weekly="' + h.id + ':' + person.key + '">' +
+            (c.done ? '✓ done' : 'not yet') + '</button>' +
+            '<button type="button" class="note-toggle' + (c.note ? ' has-note' : '') + '" data-note-toggle="' + noteKey + '" title="Notes">💬</button>' +
+            '</div>';
+          html += '<div class="note-panel" data-note-panel="' + noteKey + '"' + (expandedNotes[noteKey] ? '' : ' hidden') + '>' +
+            '<button type="button" class="note-banner" data-note-toggle="' + noteKey + '">Note for this week <span class="chev">▲</span></button>' +
+            '<textarea data-note-input="' + h.id + ':' + person.key + ':' + wKey + '" placeholder="Add a note about this week...">' + esc(c.note || '') + '</textarea>' +
+            '</div>';
+          html += '</div>';
+        });
+      }
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function render(){
+    var app = document.getElementById('app');
+    if (!app || !STATE) return;
+    var existingInput = document.getElementById('new-habit');
+    var pendingNewHabitVal = existingInput ? existingInput.value : '';
+    var tKey = todayKey();
+    var streak = computeStreak(STATE);
+    var p1 = STATE.people[0], p2 = STATE.people[1];
+
+    var html = '';
+    html += '<div class="eyebrow">' + esc(fullDate(tKey)) + '</div>';
+    html += '<div class="header-row"><div><h1>Say &amp; Do</h1>' +
+      '<p class="sub">Morning intentions, evening results — for the two of you.</p></div>' +
+      '<div class="streak"><b>' + streak + '</b>day streak</div></div>';
+
+    var wKey = weekKeyFor(tKey);
+
+    html += '<div class="card">';
+    html += '<div class="section-title">Today</div>';
+    html += '<div class="panes">';
+    html += renderPane(p1, '--accent-am', tKey, wKey);
+    html += renderPane(p2, '--accent-pm', tKey, wKey);
+    html += '</div>';
+    html += '</div>';
+
+    html += '<div class="card">';
+    html += '<div class="section-title">Add a habit</div>';
+    html += '<div class="add-row">' +
+      '<input type="text" id="new-habit" maxlength="60" placeholder="Add a habit, e.g. 20-minute walk" value="' + esc(pendingNewHabitVal) + '" />' +
+      '<div class="assignee-toggle" id="assignee-toggle">' +
+      '<button type="button" class="assignee-btn' + (pendingAssignee==='both'?' on':'') + '" data-assignee="both">Both</button>' +
+      '<button type="button" class="assignee-btn' + (pendingAssignee==='p1'?' on':'') + '" data-assignee="p1">' + esc(p1.name) + '</button>' +
+      '<button type="button" class="assignee-btn' + (pendingAssignee==='p2'?' on':'') + '" data-assignee="p2">' + esc(p2.name) + '</button>' +
+      '</div>' +
+      '<div class="assignee-toggle" id="cadence-toggle">' +
+      '<button type="button" class="assignee-btn' + (pendingCadence==='daily'?' on':'') + '" data-cadence="daily">Daily</button>' +
+      '<button type="button" class="assignee-btn' + (pendingCadence==='weekly'?' on':'') + '" data-cadence="weekly">Weekly</button>' +
+      '</div>' +
+      '<button type="button" id="add-habit-btn">Add</button>' +
+      '</div>';
+    html += '</div>';
+
+    html += '<div class="card">';
+    html += '<div class="section-title">Score</div>';
+    html += '<table class="score-table"><thead><tr><th></th><th>' + esc(p1.name) + '</th><th>' + esc(p2.name) + '</th></tr></thead><tbody>';
+    [['Today', [tKey]], ['This week', lastNKeys(7)], ['All-time', Object.keys(STATE.days)]].forEach(function(row){
+      html += '<tr><td>' + row[0] + '</td><td>' + pointsForKeys(STATE, 'p1', row[1]) + '</td><td>' + pointsForKeys(STATE, 'p2', row[1]) + '</td></tr>';
+    });
+    html += '</tbody></table></div>';
+
+    html += '<div class="card">';
+    html += '<div class="section-title">Last 14 days</div>';
+    html += '<div class="legend"><span class="legend-swatch" style="background:var(--surface-2); border:1px solid var(--border);"></span>none' +
+      '<span class="legend-swatch" style="background:var(--done-soft); border:1px solid var(--done);"></span>partial' +
+      '<span class="legend-swatch" style="background:var(--done); border:1px solid var(--done);"></span>all done</div>';
+    html += '<div class="history">';
+    for (var i = 13; i >= 0; i--){
+      var k = addDaysToKey(tKey, -i);
+      var comp = dayCompletion(STATE, k);
+      var bg = 'var(--surface-2)', bd = 'var(--border)';
+      if (comp.engaged){
+        if (comp.ratio >= 0.999){ bg = 'var(--done)'; bd = 'var(--done)'; }
+        else if (comp.ratio > 0){ bg = 'var(--done-soft)'; bd = 'var(--done)'; }
+      }
+      html += '<div class="day-cell' + (k===tKey ? ' today' : '') + '" style="background:' + bg + '; border-color:' + bd + ';" title="' + esc(fullDate(k)) + '">' +
+        '<span class="dow">' + esc(dowLabel(k)) + '</span><span class="num">' + esc(dayNum(k)) + '</span></div>';
+    }
+    html += '</div></div>';
+
+    html += '<footer><span class="status-dot" id="status-dot"></span><span id="status-label">Ready</span>' +
+      '<span style="flex:1"></span><button type="button" class="settings-link" id="settings-link">Settings</button></footer>';
+
+    if (confirmRemoveId){
+      var pendingHabit = STATE.habits.find(function(h){ return h.id === confirmRemoveId; });
+      if (pendingHabit){
+        html += '<div class="confirm-overlay" data-confirm-overlay>' +
+          '<div class="confirm-box">' +
+          '<p class="confirm-text">Remove <b>' + esc(pendingHabit.name) + '</b> from the tracker?</p>' +
+          '<div class="confirm-actions">' +
+          '<button type="button" class="confirm-cancel" data-confirm-cancel>Cancel</button>' +
+          '<button type="button" class="confirm-remove" data-confirm-remove>Remove</button>' +
+          '</div></div></div>';
+      } else {
+        confirmRemoveId = null;
+      }
+    }
+
+    app.innerHTML = html;
+    setStatus(status);
+    wireEvents();
+  }
+
+  function wireEvents(){
+    var app = document.getElementById('app');
+    app.querySelectorAll('[data-toggle]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var parts = btn.getAttribute('data-toggle').split(':');
+        toggle(parts[0], parts[1], parts[2]);
+      });
+    });
+    var LONG_PRESS_MS = 600;
+    var MOVE_TOLERANCE = 10;
+    app.querySelectorAll('[data-longpress]').forEach(function(el){
+      var timer = null;
+      var startX = 0, startY = 0;
+      function clear(){ clearTimeout(timer); timer = null; el.classList.remove('pressing'); }
+      function start(e){
+        if (typeof e.button === 'number' && e.button !== 0) return;
+        startX = typeof e.clientX === 'number' ? e.clientX : 0;
+        startY = typeof e.clientY === 'number' ? e.clientY : 0;
+        el.classList.add('pressing');
+        timer = setTimeout(function(){
+          el.classList.remove('pressing');
+          requestRemove(el.getAttribute('data-longpress'));
+        }, LONG_PRESS_MS);
+      }
+      function move(e){
+        if (!timer) return;
+        var x = typeof e.clientX === 'number' ? e.clientX : startX;
+        var y = typeof e.clientY === 'number' ? e.clientY : startY;
+        if (Math.abs(x - startX) > MOVE_TOLERANCE || Math.abs(y - startY) > MOVE_TOLERANCE) clear();
+      }
+      el.addEventListener('pointerdown', start);
+      el.addEventListener('pointermove', move);
+      el.addEventListener('pointerup', clear);
+      el.addEventListener('pointercancel', clear);
+      el.addEventListener('pointerleave', clear);
+      el.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+    });
+    var overlay = app.querySelector('[data-confirm-overlay]');
+    if (overlay) overlay.addEventListener('click', function(e){ if (e.target === overlay) cancelRemove(); });
+    var confirmCancelBtn = app.querySelector('[data-confirm-cancel]');
+    if (confirmCancelBtn) confirmCancelBtn.addEventListener('click', cancelRemove);
+    var confirmRemoveBtn = app.querySelector('[data-confirm-remove]');
+    if (confirmRemoveBtn) confirmRemoveBtn.addEventListener('click', confirmRemove);
+    app.querySelectorAll('[data-rename]').forEach(function(input){
+      input.addEventListener('change', function(){ renamePerson(input.getAttribute('data-rename'), input.value); });
+      input.addEventListener('keydown', function(e){ if (e.key==='Enter') input.blur(); });
+    });
+    var addBtn = document.getElementById('add-habit-btn');
+    var newHabitInput = document.getElementById('new-habit');
+    if (addBtn && newHabitInput){
+      addBtn.addEventListener('click', function(){ addHabit(newHabitInput.value, pendingAssignee, pendingCadence); });
+      newHabitInput.addEventListener('keydown', function(e){
+        if (e.key==='Enter'){ addHabit(newHabitInput.value, pendingAssignee, pendingCadence); }
+      });
+    }
+    var assigneeToggle = document.getElementById('assignee-toggle');
+    if (assigneeToggle){
+      assigneeToggle.querySelectorAll('.assignee-btn').forEach(function(btn){
+        btn.addEventListener('click', function(){
+          pendingAssignee = btn.getAttribute('data-assignee');
+          assigneeToggle.querySelectorAll('.assignee-btn').forEach(function(b){ b.classList.toggle('on', b === btn); });
+        });
+      });
+    }
+    var cadenceToggle = document.getElementById('cadence-toggle');
+    if (cadenceToggle){
+      cadenceToggle.querySelectorAll('.assignee-btn').forEach(function(btn){
+        btn.addEventListener('click', function(){
+          pendingCadence = btn.getAttribute('data-cadence');
+          cadenceToggle.querySelectorAll('.assignee-btn').forEach(function(b){ b.classList.toggle('on', b === btn); });
+        });
+      });
+    }
+    app.querySelectorAll('[data-toggle-weekly]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var parts = btn.getAttribute('data-toggle-weekly').split(':');
+        toggleWeekly(parts[0], parts[1]);
+      });
+    });
+    app.querySelectorAll('[data-note-toggle]').forEach(function(btn){
+      btn.addEventListener('mousedown', function(e){ e.preventDefault(); });
+      btn.addEventListener('click', function(){
+        var key = btn.getAttribute('data-note-toggle');
+        var willOpen = !expandedNotes[key];
+        if (!willOpen){
+          var panel = app.querySelector('[data-note-panel="' + key + '"]');
+          var ta = panel ? panel.querySelector('textarea') : null;
+          if (ta){
+            var parts = ta.getAttribute('data-note-input').split(':');
+            setNote(parts[2], parts[0], parts[1], ta.value);
+          }
+        }
+        expandedNotes[key] = willOpen;
+        render();
+      });
+    });
+    app.querySelectorAll('[data-note-input]').forEach(function(ta){
+      ta.addEventListener('blur', function(){
+        var parts = ta.getAttribute('data-note-input').split(':');
+        setNote(parts[2], parts[0], parts[1], ta.value);
+        var key = parts[0] + ':' + parts[1];
+        expandedNotes[key] = false;
+        render();
+      });
+    });
+    var settingsLink = document.getElementById('settings-link');
+    if (settingsLink){
+      settingsLink.addEventListener('click', function(){
+        if (confirm('Disconnect this device from the shared tracker? You can reconnect any time with the same Bin ID and key.')){
+          clearConfigLocal();
+          clearTimeout(saveTimer);
+          clearInterval(pollTimer);
+          CONFIG = null;
+          STATE = null;
+          renderSetup();
+        }
+      });
+    }
+  }
+
+  // ==========================================================================
+  // First-run / settings screen
+  // ==========================================================================
+  function renderSetup(prefill, errorMsg){
+    prefill = prefill || {};
+    var app = document.getElementById('app');
+    var html = '<div class="setup-wrap"><div class="setup-card">' +
+      '<h1>Connect Say &amp; Do</h1>' +
+      '<p>This device needs to be pointed at your shared data store once. Paste the Bin ID and key you (or your partner) got from jsonbin.io — the same two values for both of you.</p>' +
+      '<div class="setup-field"><label for="setup-bin">Bin ID</label>' +
+      '<input type="text" id="setup-bin" placeholder="e.g. 66f1a2b3c4d5e6f7a8b9c0d1" value="' + esc(prefill.binId || '') + '" autocomplete="off" spellcheck="false"></div>' +
+      '<div class="setup-field"><label for="setup-key">Master key (or access key)</label>' +
+      '<input type="text" id="setup-key" placeholder="e.g. $2a$10$..." value="' + esc(prefill.apiKey || '') + '" autocomplete="off" spellcheck="false"></div>' +
+      '<div class="setup-actions"><button type="button" id="setup-connect">Connect</button><span id="setup-status" style="font-size:12px;color:var(--text-muted)"></span></div>' +
+      (errorMsg ? '<div class="setup-error">' + esc(errorMsg) + '</div>' : '') +
+      '</div></div>';
+    app.innerHTML = html;
+    document.getElementById('setup-connect').addEventListener('click', async function(){
+      var binId = document.getElementById('setup-bin').value.trim();
+      var apiKey = document.getElementById('setup-key').value.trim();
+      if (!binId || !apiKey){ renderSetup({binId:binId, apiKey:apiKey}, 'Please fill in both fields.'); return; }
+      var btn = document.getElementById('setup-connect');
+      var statusEl = document.getElementById('setup-status');
+      btn.disabled = true;
+      statusEl.textContent = 'Connecting…';
+      CONFIG = {binId: binId, apiKey: apiKey};
+      try{
+        var data = await fetchRemote();
+        var fresh = normalizeState(data.record || data);
+        saveConfigLocal(CONFIG);
+        STATE = fresh;
+        saveCache(STATE);
+        startApp();
+      }catch(e){
+        CONFIG = null;
+        renderSetup({binId:binId, apiKey:apiKey}, 'Could not connect — double check the Bin ID and key, and that the bin is reachable.');
+      }
+    });
+  }
+
+  function injectHead(){
+    var link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Karla:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap';
+    document.head.appendChild(link);
+    var style = document.createElement('style');
+    style.textContent = CSS_TEXT;
+    document.head.appendChild(style);
+  }
+
+  function startApp(){
+    var cached = loadCache();
+    if (cached && !STATE){ STATE = normalizeState(cached); applyPendingOps(STATE); }
+    if (STATE) render();
+    refreshFromRemote(true);
+    clearInterval(pollTimer);
+    pollTimer = setInterval(function(){ refreshFromRemote(false); }, 20000);
+    document.addEventListener('visibilitychange', function(){
+      if (document.visibilityState === 'visible') refreshFromRemote(false);
+    });
+    document.addEventListener('keydown', function(e){
+      if (e.key === 'Escape' && confirmRemoveId) cancelRemove();
+    });
+  }
+
+  function boot(){
+    injectHead();
+    CONFIG = loadConfig();
+    if (!CONFIG){ renderSetup(); return; }
+    startApp();
+  }
+
+  boot();
+})();
+</script>
+</body>
+</html>
