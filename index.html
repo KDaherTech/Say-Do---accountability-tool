@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Say &amp; Do</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
 </head>
 <body>
 <div id="app">Loading…</div>
@@ -92,6 +93,7 @@
   .task-name{
     cursor:pointer; user-select:none; -webkit-user-select:none; touch-action:manipulation;
     border-radius:6px; padding:2px 6px; margin:-2px -6px; transition:background .18s ease, color .18s ease;
+    min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   }
   .task-name.pressing{background:var(--danger-soft); color:var(--danger);}
   .empty{padding:22px 18px; color:var(--text-muted); font-size:14px; line-height:1.6;}
@@ -101,7 +103,7 @@
     font-family:'Karla',sans-serif; font-size:12px; font-weight:700; border:none; background:transparent; color:var(--text-muted);
     border-radius:7px; padding:6px 10px; cursor:pointer;
   }
-  .assignee-btn.on{background:var(--surface); color:var(--text); box-shadow:0 1px 2px rgba(0,0,0,.08);}
+  .assignee-btn.on{background:var(--text); color:var(--bg); box-shadow:0 1px 2px rgba(0,0,0,.08);}
   .assignee-btn:focus-visible{outline:2px solid var(--ring);}
   .score-table{width:100%; border-collapse:collapse; margin:2px 4px 14px; font-family:'IBM Plex Mono',monospace;}
   .score-table th, .score-table td{padding:8px 14px; text-align:left; font-size:13px; font-variant-numeric:tabular-nums;}
@@ -111,10 +113,6 @@
   .score-table td:not(:first-child), .score-table th:not(:first-child){text-align:right;}
   .panes{display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:2px;}
   .pane{padding:4px 0;}
-  .pane + .pane{border-top:1px solid var(--border);}
-  @media (min-width:560px){
-    .pane + .pane{border-top:none; border-left:1px solid var(--border);}
-  }
   .pane-header{
     display:flex; align-items:center; gap:8px; padding:8px 16px 10px;
   }
@@ -123,13 +121,13 @@
     color:var(--text); width:100%; padding:2px 0;
   }
   .pane-header input:focus-visible{outline:2px solid var(--ring); outline-offset:2px; border-radius:4px;}
-  .person-dot{width:9px; height:9px; border-radius:50%;}
+  .person-dot{width:9px; height:9px; border-radius:50%; flex:0 0 auto;}
   .pane-subhead{
     font-family:'IBM Plex Mono',monospace; font-size:10px; text-transform:uppercase; letter-spacing:.06em;
     color:var(--text-muted); padding:12px 16px 4px;
   }
   .task-row{
-    display:grid; grid-template-columns:1fr auto auto; align-items:center; gap:6px;
+    display:grid; grid-template-columns:auto 1fr auto auto; align-items:center; gap:6px;
     padding:8px 16px; border-top:1px solid var(--border);
   }
   .pane-header + .task, .pane-header + .empty{border-top:none;}
@@ -137,6 +135,14 @@
   .task-name{font-weight:500; font-size:14px;}
   .pill.weekly{padding:6px 12px;}
   .pane .empty{padding:6px 16px 16px;}
+  .drag-handle{
+    cursor:grab; color:var(--text-muted); font-size:15px; padding:4px 2px; touch-action:none;
+    user-select:none; -webkit-user-select:none; line-height:1;
+  }
+  .drag-handle:active{cursor:grabbing;}
+  .sortable-ghost{opacity:.3;}
+  .sortable-chosen .task-row{background:var(--surface-2); border-radius:10px;}
+  .sortable-drag .task-row{box-shadow:0 8px 20px rgba(0,0,0,.18); border-radius:10px;}
   .note-toggle{
     background:none; border:none; font-size:13px; cursor:pointer; padding:4px 6px; border-radius:6px; opacity:.5;
     line-height:1;
@@ -144,7 +150,7 @@
   .note-toggle:hover{opacity:1; background:var(--surface-2);}
   .note-toggle.has-note{opacity:1;}
   .note-toggle:focus-visible{outline:2px solid var(--ring);}
-  .note-panel{padding:0 16px 10px;}
+  .note-panel{padding:0 16px 10px 40px;}
   .note-panel[hidden]{display:none;}
   .note-banner{
     display:flex; align-items:center; justify-content:space-between; width:100%;
@@ -170,14 +176,18 @@
     background:var(--text); color:var(--bg); padding:0 16px; cursor:pointer;
   }
   .add-row button:disabled{opacity:.4; cursor:default;}
+  .cadence-hint{font-size:11px; color:var(--text-muted); padding:0 14px 12px; margin-top:-8px;}
   .history{display:flex; gap:6px; overflow-x:auto; padding:4px 2px 8px;}
   .day-cell{
     flex:0 0 auto; width:38px; height:44px; border-radius:9px; border:1px solid var(--border);
     display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+    cursor:pointer; background:none; font-family:inherit; padding:0;
   }
+  .day-cell:focus-visible{outline:2px solid var(--ring); outline-offset:2px;}
   .day-cell .dow{font-family:'IBM Plex Mono',monospace; font-size:9px; color:var(--text-muted); text-transform:uppercase;}
   .day-cell .num{font-family:'IBM Plex Mono',monospace; font-size:12px; font-variant-numeric:tabular-nums;}
   .day-cell.today{border-color:var(--ring); border-width:2px;}
+  .day-cell.viewing{border-color:var(--accent-am); border-width:2px; box-shadow:0 0 0 1px var(--accent-am);}
   .legend{display:flex; align-items:center; gap:10px; font-size:11px; color:var(--text-muted); padding:0 4px 6px;}
   .legend-swatch{width:10px; height:10px; border-radius:3px; display:inline-block; margin-right:4px; vertical-align:middle;}
   footer{
@@ -191,6 +201,69 @@
   .settings-link{background:none; border:none; color:var(--text-muted); font-family:inherit; font-size:12px; cursor:pointer; text-decoration:underline; padding:0;}
   .settings-link:hover{color:var(--text);}
   @media (prefers-reduced-motion: reduce){ .pill{transition:none;} }
+
+  .back-link{
+    background:none; border:none; color:var(--text-muted); font-family:'IBM Plex Mono',monospace; font-size:11px;
+    text-transform:uppercase; letter-spacing:.06em; cursor:pointer; padding:0; display:inline-flex; align-items:center; gap:5px;
+    margin-bottom:14px;
+  }
+  .back-link:hover{color:var(--text);}
+
+  .home-tiles{display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:12px; margin-bottom:24px;}
+  .profile-tile{
+    background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:22px 20px;
+    cursor:pointer; text-align:left; display:flex; flex-direction:column; gap:10px; font-family:inherit;
+    transition:border-color .15s ease, transform .1s ease; -webkit-tap-highlight-color:transparent;
+  }
+  .profile-tile:hover{border-color:var(--ring);}
+  .profile-tile:active{transform:scale(.98);}
+  .profile-tile:focus-visible{outline:2px solid var(--ring); outline-offset:2px;}
+  .tile-dot{width:16px; height:16px; border-radius:50%;}
+  .profile-tile h2{font-family:'Fraunces',Georgia,serif; font-size:23px; font-weight:600; margin:0;}
+  .tile-meta{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.05em;
+  }
+  .tile-stat-row{display:flex; gap:14px; margin-top:2px;}
+  .tile-stat b{font-size:15px; font-variant-numeric:tabular-nums;}
+
+  .leader-row{
+    display:flex; align-items:center; justify-content:space-between; padding:12px 18px; border-top:1px solid var(--border);
+    gap:10px;
+  }
+  .leader-row:first-child{border-top:none;}
+  .leader-who{display:flex; align-items:center; gap:10px; min-width:0;}
+  .leader-name{font-weight:700; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .leader-crown{font-size:14px;}
+  .leader-pts{display:flex; gap:16px; font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--text-muted); white-space:nowrap;}
+  .leader-pts b{color:var(--text); font-size:14px; font-variant-numeric:tabular-nums;}
+
+  .insight-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));}
+  .insight-card{padding:14px 18px; border-top:1px solid var(--border);}
+  .insight-grid .insight-card:nth-child(-n+2){border-top:none;}
+  @media (min-width:480px){
+    .insight-card:nth-child(2){border-left:1px solid var(--border);}
+  }
+  .insight-name{display:flex; align-items:center; gap:8px; font-weight:700; font-size:13.5px; margin-bottom:10px;}
+  .insight-stats{display:flex; gap:18px; flex-wrap:wrap;}
+  .stat-num{font-family:'IBM Plex Mono',monospace; font-size:19px; font-variant-numeric:tabular-nums;}
+  .stat-label{font-size:10.5px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.05em; margin-top:1px;}
+
+  .date-nav{display:flex; align-items:center; justify-content:center; gap:10px; padding:2px 0 6px;}
+  .date-nav-btn{
+    background:var(--surface-2); border:1px solid var(--border); border-radius:9px; width:34px; height:34px;
+    font-size:15px; cursor:pointer; color:var(--text); display:flex; align-items:center; justify-content:center;
+  }
+  .date-nav-btn:disabled{opacity:.35; cursor:default;}
+  .date-nav-btn:focus-visible{outline:2px solid var(--ring);}
+  .date-label{
+    font-family:'IBM Plex Mono',monospace; font-size:12px; text-transform:uppercase; letter-spacing:.04em;
+    color:var(--text-muted); min-width:150px; text-align:center;
+  }
+  .date-label b{color:var(--text); font-weight:700; display:block; font-size:13px; text-transform:none; letter-spacing:0; margin-top:1px;}
+  .jump-today{
+    background:none; border:none; color:var(--accent-am); font-family:'IBM Plex Mono',monospace; font-size:11px;
+    text-transform:uppercase; letter-spacing:.05em; cursor:pointer; padding:0; text-decoration:underline;
+  }
 
   .setup-wrap{max-width:420px; margin:60px auto; padding:0 20px;}
   .setup-card{background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:26px 24px;}
@@ -246,6 +319,11 @@
     return new Intl.DateTimeFormat('en-US', {weekday:'long', month:'long', day:'numeric', timeZone:TZ}).format(dt);
   }
 
+  function shortDate(key){
+    var dt = new Date(key + 'T12:00:00');
+    return new Intl.DateTimeFormat('en-US', {weekday:'short', month:'short', day:'numeric', timeZone:TZ}).format(dt);
+  }
+
   function isWeekend(key){
     var d = dowLabel(key);
     return d === 'Sa' || d === 'Su';
@@ -253,6 +331,18 @@
 
   function displayName(h, key){
     return (h.weekendName && isWeekend(key)) ? h.weekendName : h.name;
+  }
+
+  function habitVisibleOnDate(h, dateKey){
+    if (h.cadence === 'weekday') return !isWeekend(dateKey);
+    if (h.cadence === 'weekend') return isWeekend(dateKey);
+    return true; // daily / undefined
+  }
+
+  function cadenceLabel(h){
+    if (h.cadence === 'weekday') return 'Weekdays';
+    if (h.cadence === 'weekend') return 'Weekends';
+    return '';
   }
 
   var DOW_ORDER = ['Su','Mo','Tu','We','Th','Fr','Sa'];
@@ -292,20 +382,37 @@
     return d[habitId][personKey];
   }
 
+  var HISTORY_LIMIT_DAYS = 90;
   function pruneOldDays(state){
-    var cutoff = addDaysToKey(todayKey(), -90);
+    var cutoff = addDaysToKey(todayKey(), -HISTORY_LIMIT_DAYS);
     Object.keys(state.days).forEach(function(k){
       if (k < cutoff) delete state.days[k];
     });
   }
 
+  function earliestNavigableKey(){
+    return addDaysToKey(todayKey(), -(HISTORY_LIMIT_DAYS - 1));
+  }
+
   function dayCompletion(state, dateKey){
     var total = 0, done = 0, engaged = false;
     dailyHabits(state).forEach(function(h){
+      if (!habitVisibleOnDate(h, dateKey)) return;
       assigneePeople(state, h).forEach(function(p){
         var c = getCell(state, dateKey, h.id, p.key);
         if (c.done || c.missed){ engaged = true; total++; if (c.done) done++; }
       });
+    });
+    return {total:total, done:done, engaged:engaged, ratio: total ? done/total : 0};
+  }
+
+  function dayCompletionForPerson(state, dateKey, personKey){
+    var total = 0, done = 0, engaged = false;
+    dailyHabits(state).forEach(function(h){
+      if (!(h.assignee === 'both' || h.assignee === personKey)) return;
+      if (!habitVisibleOnDate(h, dateKey)) return;
+      var c = getCell(state, dateKey, h.id, personKey);
+      if (c.done || c.missed){ engaged = true; total++; if (c.done) done++; }
     });
     return {total:total, done:done, engaged:engaged, ratio: total ? done/total : 0};
   }
@@ -315,6 +422,7 @@
     state.habits.forEach(function(h){
       var relevant = assigneePeople(state, h).some(function(p){ return p.key === personKey; });
       if (!relevant) return;
+      if (h.cadence !== 'weekly' && !habitVisibleOnDate(h, dateKey)) return;
       var c = getCell(state, dateKey, h.id, personKey);
       if (c.done) pts += (h.points || 1);
     });
@@ -332,19 +440,30 @@
     return out;
   }
 
-  function computeStreak(state){
-    if (!state.habits.length) return 0;
+  function computeStreakForPerson(state, personKey){
+    var hasHabits = habitsFor(dailyHabits(state), personKey).length > 0;
+    if (!hasHabits) return 0;
     var streak = 0;
     var key = addDaysToKey(todayKey(), -1);
     var guard = 0;
     while (guard < 400){
       guard++;
-      var c = dayCompletion(state, key);
+      var c = dayCompletionForPerson(state, key, personKey);
       if (!c.engaged || c.done < c.total) break;
       streak++;
       key = addDaysToKey(key, -1);
     }
     return streak;
+  }
+
+  function weekCompletionPctForPerson(state, personKey){
+    var keys = lastNKeys(7);
+    var total = 0, done = 0;
+    keys.forEach(function(k){
+      var c = dayCompletionForPerson(state, k, personKey);
+      total += c.total; done += c.done;
+    });
+    return total ? Math.round((done / total) * 100) : null;
   }
 
   function personByKey(state, key){ return state.people.find(function(p){ return p.key===key; }); }
@@ -353,11 +472,36 @@
     return habitList.filter(function(h){ return h.assignee === 'both' || h.assignee === personKey; });
   }
 
+  function emptyOrder(){ return {main:[], weekly:[]}; }
+
+  function ensureOrder(state){
+    if (!state.order || typeof state.order !== 'object') state.order = {};
+    state.people.forEach(function(p){
+      var o = state.order[p.key];
+      if (!o || typeof o !== 'object' || !Array.isArray(o.main) || !Array.isArray(o.weekly)){
+        state.order[p.key] = emptyOrder();
+      }
+    });
+    return state.order;
+  }
+
+  function orderedHabitsForPerson(state, personKey, group, habitList){
+    var order = ensureOrder(state)[personKey][group] || [];
+    var idx = {};
+    order.forEach(function(id, i){ idx[id] = i; });
+    return habitList.map(function(h, i){ return {h:h, i:i}; }).sort(function(a, b){
+      var ai = idx.hasOwnProperty(a.h.id) ? idx[a.h.id] : (1000000 + a.i);
+      var bi = idx.hasOwnProperty(b.h.id) ? idx[b.h.id] : (1000000 + b.i);
+      return ai - bi;
+    }).map(function(x){ return x.h; });
+  }
+
   function normalizeState(s){
     s = s || {};
     if (!s.people) s.people = [{key:'p1',name:'Khaled'},{key:'p2',name:'Nat'}];
     if (!s.habits) s.habits = [];
     if (!s.days) s.days = {};
+    ensureOrder(s);
     return s;
   }
 
@@ -435,6 +579,9 @@
       } else if (op.type === 'rename'){
         var p = state.people.find(function(pp){ return pp.key === op.key; });
         if (p) p.name = op.name;
+      } else if (op.type === 'reorder'){
+        ensureOrder(state);
+        if (state.order[op.personKey]) state.order[op.personKey][op.group] = op.order;
       }
     });
     return true;
@@ -467,12 +614,17 @@
   }
 
   // ==========================================================================
-  // App state / status
+  // App state / status / navigation
   // ==========================================================================
   var STATE = null;
   var status = 'idle'; // idle|loading|saving|saved|offline|error
   var saveTimer = null;
   var pollTimer = null;
+
+  // VIEW drives which screen renders. It is intentionally NOT persisted to
+  // localStorage: every fresh visit lands on the home/profile-picker screen,
+  // per how Khaled & Nat want to use this to keep each other accountable.
+  var VIEW = { screen: 'home', personKey: null, dateKey: todayKey() };
 
   function setStatus(s){
     status = s;
@@ -543,10 +695,35 @@
   }
 
   // ==========================================================================
+  // Navigation
+  // ==========================================================================
+  function goHome(){
+    VIEW.screen = 'home'; VIEW.personKey = null;
+    render();
+  }
+  function enterPerson(key){
+    VIEW.screen = 'person'; VIEW.personKey = key; VIEW.dateKey = todayKey();
+    pendingAssignee = key; pendingCadence = 'daily';
+    render();
+  }
+  function navigateDay(delta){
+    var nk = addDaysToKey(VIEW.dateKey, delta);
+    if (nk > todayKey()) return;
+    if (nk < earliestNavigableKey()) return;
+    VIEW.dateKey = nk;
+    render();
+  }
+  function jumpToDay(key){
+    if (key > todayKey() || key < earliestNavigableKey()) return;
+    VIEW.dateKey = key;
+    render();
+  }
+
+  // ==========================================================================
   // Mutations (instant local update + queue the op + debounce a save)
   // ==========================================================================
-  function toggle(habitId, personKey, field){
-    var dateKey = todayKey();
+  function toggle(habitId, personKey, field, dateKey){
+    dateKey = dateKey || todayKey();
     var cell = ensureCell(STATE, dateKey, habitId, personKey);
     cell[field] = !cell[field];
     if (field === 'done' && cell.done) cell.missed = false;
@@ -562,12 +739,12 @@
 
   var pendingAssignee = 'both';
 
-  function toggleWeekly(habitId, personKey){
-    var wKey = weekKeyFor(todayKey());
-    var cell = ensureCell(STATE, wKey, habitId, personKey);
+  function toggleWeekly(habitId, personKey, weekKey){
+    weekKey = weekKey || weekKeyFor(todayKey());
+    var cell = ensureCell(STATE, weekKey, habitId, personKey);
     cell.done = !cell.done;
-    queueOp('cell|' + wKey + '|' + habitId + '|' + personKey + '|done',
-      {type:'cell', dateKey:wKey, habitId:habitId, personKey:personKey, field:'done', value:cell.done});
+    queueOp('cell|' + weekKey + '|' + habitId + '|' + personKey + '|done',
+      {type:'cell', dateKey:weekKey, habitId:habitId, personKey:personKey, field:'done', value:cell.done});
     expandedNotes[habitId + ':' + personKey] = true;
     render();
     scheduleSave();
@@ -589,10 +766,10 @@
     name = (name || '').trim();
     if (!name) return;
     var h = {id: genId(), name: name, assignee: assignee || 'both', points: 1};
-    if (cadence === 'weekly') h.cadence = 'weekly';
+    if (cadence && cadence !== 'daily') h.cadence = cadence;
     STATE.habits.push(h);
     queueOp('add|' + h.id, {type:'add', habit:h});
-    pendingAssignee = 'both';
+    pendingAssignee = VIEW.personKey || 'both';
     pendingCadence = 'daily';
     render();
     scheduleSave();
@@ -624,126 +801,199 @@
     scheduleSave();
   }
 
-  // ==========================================================================
-  // Rendering
-  // ==========================================================================
-  function renderPane(person, accentVar, tKey, wKey){
-    var daily = habitsFor(dailyHabits(STATE), person.key);
-    var weekly = habitsFor(weeklyHabits(STATE), person.key);
-    var html = '<div class="pane">';
-    html += '<div class="pane-header"><span class="person-dot" style="background:var(' + accentVar + ')"></span>' +
-      '<input type="text" maxlength="24" value="' + esc(person.name) + '" data-rename="' + person.key + '" /></div>';
-    if (!daily.length && !weekly.length){
-      html += '<div class="empty">No habits yet for ' + esc(person.name) + '.</div>';
-    } else {
-      daily.forEach(function(h){
-        var c = getCell(STATE, tKey, h.id, person.key);
-        var noteKey = h.id + ':' + person.key;
-        html += '<div class="task">';
-        html += '<div class="task-row">' +
-          '<div class="task-name" data-longpress="' + h.id + '">' + esc(displayName(h, tKey)) + '</div>' +
-          '<div class="cell-group">' +
-          '<button type="button" class="pill miss' + (c.missed ? ' on' : '') + '" data-toggle="' + h.id + ':' + person.key + ':missed" title="Missed today">✕</button>' +
-          '<button type="button" class="pill pm' + (c.done ? ' on' : '') + '" data-toggle="' + h.id + ':' + person.key + ':done" title="Got it done">✓</button>' +
-          '</div>' +
-          '<button type="button" class="note-toggle' + (c.note ? ' has-note' : '') + '" data-note-toggle="' + noteKey + '" title="Notes">💬</button>' +
-          '</div>';
-        html += '<div class="note-panel" data-note-panel="' + noteKey + '"' + (expandedNotes[noteKey] ? '' : ' hidden') + '>' +
-          '<button type="button" class="note-banner" data-note-toggle="' + noteKey + '">Note for today <span class="chev">▲</span></button>' +
-          '<textarea data-note-input="' + h.id + ':' + person.key + ':' + tKey + '" placeholder="Add a note about today...">' + esc(c.note || '') + '</textarea>' +
-          '</div>';
-        html += '</div>';
-      });
-      if (weekly.length){
-        html += '<div class="pane-subhead">This week</div>';
-        weekly.forEach(function(h){
-          var c = getCell(STATE, wKey, h.id, person.key);
-          var noteKey = h.id + ':' + person.key;
-          html += '<div class="task">';
-          html += '<div class="task-row">' +
-            '<div class="task-name" data-longpress="' + h.id + '">' + esc(displayName(h, tKey)) + '</div>' +
-            '<button type="button" class="pill pm weekly' + (c.done ? ' on' : '') + '" data-toggle-weekly="' + h.id + ':' + person.key + '">' +
-            (c.done ? '✓ done' : 'not yet') + '</button>' +
-            '<button type="button" class="note-toggle' + (c.note ? ' has-note' : '') + '" data-note-toggle="' + noteKey + '" title="Notes">💬</button>' +
-            '</div>';
-          html += '<div class="note-panel" data-note-panel="' + noteKey + '"' + (expandedNotes[noteKey] ? '' : ' hidden') + '>' +
-            '<button type="button" class="note-banner" data-note-toggle="' + noteKey + '">Note for this week <span class="chev">▲</span></button>' +
-            '<textarea data-note-input="' + h.id + ':' + person.key + ':' + wKey + '" placeholder="Add a note about this week...">' + esc(c.note || '') + '</textarea>' +
-            '</div>';
-          html += '</div>';
-        });
-      }
+  // Reordering: `visibleIds` is the new sequence of just the tiles that were
+  // on screen in that drag list (weekend-only habits, say, are hidden on a
+  // Tuesday and so never appear in the drag). We splice that new sequence
+  // back into the full per-person order at the spot the first of those ids
+  // used to occupy, so items hidden today keep their place instead of being
+  // silently bumped to the end.
+  function reorderGroup(personKey, group, visibleIds){
+    var order = ensureOrder(STATE)[personKey];
+    var existing = order[group] || [];
+    var visibleSet = {};
+    visibleIds.forEach(function(id){ visibleSet[id] = true; });
+    var firstIdx = -1;
+    for (var i = 0; i < existing.length; i++){
+      if (visibleSet[existing[i]]){ firstIdx = i; break; }
     }
-    html += '</div>';
-    return html;
+    var withoutVisible = existing.filter(function(id){ return !visibleSet[id]; });
+    var insertAt = firstIdx === -1 ? withoutVisible.length : Math.min(firstIdx, withoutVisible.length);
+    var result = withoutVisible.slice(0, insertAt).concat(visibleIds, withoutVisible.slice(insertAt));
+    order[group] = result;
+    queueOp('reorder|' + personKey + '|' + group, {type:'reorder', personKey:personKey, group:group, order:result});
+    scheduleSave();
   }
 
-  function render(){
+  // ==========================================================================
+  // Rendering: Home (profile picker + leaderboard + insights)
+  // ==========================================================================
+  function renderHome(){
     var app = document.getElementById('app');
-    if (!app || !STATE) return;
-    var existingInput = document.getElementById('new-habit');
-    var pendingNewHabitVal = existingInput ? existingInput.value : '';
     var tKey = todayKey();
-    var streak = computeStreak(STATE);
     var p1 = STATE.people[0], p2 = STATE.people[1];
+    var accentOf = {}; accentOf[p1.key] = '--accent-am'; accentOf[p2.key] = '--accent-pm';
 
     var html = '';
     html += '<div class="eyebrow">' + esc(fullDate(tKey)) + '</div>';
-    html += '<div class="header-row"><div><h1>Say &amp; Do</h1>' +
-      '<p class="sub">Morning intentions, evening results — for the two of you.</p></div>' +
-      '<div class="streak"><b>' + streak + '</b>day streak</div></div>';
+    html += '<h1>Say &amp; Do</h1>';
+    html += '<p class="sub">Whose goals do you want to look at?</p>';
 
-    var wKey = weekKeyFor(tKey);
+    html += '<div class="home-tiles">';
+    [p1, p2].forEach(function(p){
+      var streakN = computeStreakForPerson(STATE, p.key);
+      var todayPts = pointsForDay(STATE, tKey, p.key);
+      html += '<button type="button" class="profile-tile" data-enter-person="' + p.key + '">' +
+        '<span class="tile-dot" style="background:var(' + accentOf[p.key] + ')"></span>' +
+        '<h2>' + esc(p.name) + '</h2>' +
+        '<span class="tile-meta">' + (streakN > 0 ? '🔥 ' + streakN + '-day streak' : 'No streak yet') + '</span>' +
+        '<div class="tile-stat-row"><div class="tile-stat"><b>' + todayPts + '</b> pt' + (todayPts===1?'':'s') + ' today</div></div>' +
+        '</button>';
+    });
+    html += '</div>';
+
+    // Leaderboard
+    var todayPts1 = pointsForDay(STATE, tKey, p1.key), todayPts2 = pointsForDay(STATE, tKey, p2.key);
+    var weekPts1 = pointsForKeys(STATE, p1.key, lastNKeys(7)), weekPts2 = pointsForKeys(STATE, p2.key, lastNKeys(7));
+    var allKeys = Object.keys(STATE.days);
+    var allPts1 = pointsForKeys(STATE, p1.key, allKeys), allPts2 = pointsForKeys(STATE, p2.key, allKeys);
+    var weekLeader = weekPts1 === weekPts2 ? null : (weekPts1 > weekPts2 ? p1.key : p2.key);
 
     html += '<div class="card">';
-    html += '<div class="section-title">Today</div>';
-    html += '<div class="panes">';
-    html += renderPane(p1, '--accent-am', tKey, wKey);
-    html += renderPane(p2, '--accent-pm', tKey, wKey);
+    html += '<div class="section-title">Leaderboard</div>';
+    [p1, p2].forEach(function(p, idx){
+      var wPts = idx === 0 ? weekPts1 : weekPts2;
+      var tPts = idx === 0 ? todayPts1 : todayPts2;
+      var aPts = idx === 0 ? allPts1 : allPts2;
+      html += '<div class="leader-row">' +
+        '<div class="leader-who"><span class="person-dot" style="background:var(' + accentOf[p.key] + ')"></span>' +
+        '<span class="leader-name">' + esc(p.name) + '</span>' +
+        (weekLeader === p.key ? '<span class="leader-crown" title="Ahead this week">👑</span>' : '') +
+        '</div>' +
+        '<div class="leader-pts"><span>Today <b>' + tPts + '</b></span><span>Week <b>' + wPts + '</b></span><span>All-time <b>' + aPts + '</b></span></div>' +
+        '</div>';
+    });
     html += '</div>';
+
+    // Insights
+    html += '<div class="card">';
+    html += '<div class="section-title">This week</div>';
+    html += '<div class="insight-grid">';
+    [p1, p2].forEach(function(p){
+      var pct = weekCompletionPctForPerson(STATE, p.key);
+      var streakN = computeStreakForPerson(STATE, p.key);
+      html += '<div class="insight-card">' +
+        '<div class="insight-name"><span class="person-dot" style="background:var(' + accentOf[p.key] + ')"></span>' + esc(p.name) + '</div>' +
+        '<div class="insight-stats">' +
+        '<div><div class="stat-num">' + (pct===null ? '—' : pct + '%') + '</div><div class="stat-label">Completed</div></div>' +
+        '<div><div class="stat-num">' + streakN + '</div><div class="stat-label">Day streak</div></div>' +
+        '</div></div>';
+    });
+    html += '</div></div>';
+
+    html += '<footer><span class="status-dot" id="status-dot"></span><span id="status-label">Ready</span>' +
+      '<span style="flex:1"></span><button type="button" class="settings-link" id="settings-link">Settings</button></footer>';
+
+    app.innerHTML = html;
+    setStatus(status);
+    wireEvents();
+  }
+
+  // ==========================================================================
+  // Rendering: a single person's goals page
+  // ==========================================================================
+  function renderPersonPage(personKey){
+    var app = document.getElementById('app');
+    var person = personByKey(STATE, personKey);
+    if (!person){ goHome(); return; }
+    var accentVar = personKey === STATE.people[0].key ? '--accent-am' : '--accent-pm';
+    var dKey = VIEW.dateKey;
+    var wKey = weekKeyFor(dKey);
+    var isToday = dKey === todayKey();
+
+    var existingInput = document.getElementById('new-habit');
+    var pendingNewHabitVal = existingInput ? existingInput.value : '';
+
+    var mainList = habitsFor(dailyHabits(STATE), personKey).filter(function(h){ return habitVisibleOnDate(h, dKey); });
+    mainList = orderedHabitsForPerson(STATE, personKey, 'main', mainList);
+    var weeklyList = habitsFor(weeklyHabits(STATE), personKey);
+    weeklyList = orderedHabitsForPerson(STATE, personKey, 'weekly', weeklyList);
+
+    var html = '';
+    html += '<button type="button" class="back-link" data-go-home>&larr; Switch profile</button>';
+    html += '<div class="header-row"><div>' +
+      '<div class="eyebrow">' + (isToday ? 'Today' : shortDate(dKey)) + '</div>' +
+      '<h1><span class="person-dot" style="background:var(' + accentVar + '); display:inline-block; width:14px; height:14px; margin-right:8px;"></span>' + esc(person.name) + '</h1></div>' +
+      '<div class="streak"><b>' + pointsForDay(STATE, dKey, personKey) + '</b>pt' + (pointsForDay(STATE, dKey, personKey)===1?'':'s') + ' ' + (isToday ? 'today' : 'that day') + '</div></div>';
+
+    html += '<div class="date-nav">' +
+      '<button type="button" class="date-nav-btn" data-nav-day="-1"' + (dKey <= earliestNavigableKey() ? ' disabled' : '') + ' title="Previous day">&larr;</button>' +
+      '<div class="date-label">' + esc(fullDate(dKey)) + (isToday ? '' : '<b>Viewing a past day — edits save normally</b>') + '</div>' +
+      '<button type="button" class="date-nav-btn" data-nav-day="1"' + (dKey >= todayKey() ? ' disabled' : '') + ' title="Next day">&rarr;</button>' +
+      '</div>';
+    if (!isToday){
+      html += '<div style="text-align:center; margin:-4px 0 18px;"><button type="button" class="jump-today" data-jump-today>Jump back to today</button></div>';
+    } else {
+      html += '<div style="margin-bottom:18px;"></div>';
+    }
+
+    html += '<div class="card">';
+    if (!mainList.length && !weeklyList.length){
+      html += '<div class="empty">No goals yet for ' + esc(person.name) + '. Add one below.</div>';
+    } else {
+      if (mainList.length){
+        html += '<div class="drag-list" data-drag-group="' + personKey + '|main">';
+        mainList.forEach(function(h){
+          html += renderTile(h, personKey, dKey, false);
+        });
+        html += '</div>';
+      }
+      if (weeklyList.length){
+        html += '<div class="pane-subhead">This week</div>';
+        html += '<div class="drag-list" data-drag-group="' + personKey + '|weekly">';
+        weeklyList.forEach(function(h){
+          html += renderTile(h, personKey, wKey, true);
+        });
+        html += '</div>';
+      }
+    }
     html += '</div>';
 
     html += '<div class="card">';
-    html += '<div class="section-title">Add a habit</div>';
+    html += '<div class="section-title">Add a goal</div>';
     html += '<div class="add-row">' +
-      '<input type="text" id="new-habit" maxlength="60" placeholder="Add a habit, e.g. 20-minute walk" value="' + esc(pendingNewHabitVal) + '" />' +
+      '<input type="text" id="new-habit" maxlength="60" placeholder="Add a goal, e.g. 20-minute walk" value="' + esc(pendingNewHabitVal) + '" />' +
       '<div class="assignee-toggle" id="assignee-toggle">' +
-      '<button type="button" class="assignee-btn' + (pendingAssignee==='both'?' on':'') + '" data-assignee="both">Both</button>' +
-      '<button type="button" class="assignee-btn' + (pendingAssignee==='p1'?' on':'') + '" data-assignee="p1">' + esc(p1.name) + '</button>' +
-      '<button type="button" class="assignee-btn' + (pendingAssignee==='p2'?' on':'') + '" data-assignee="p2">' + esc(p2.name) + '</button>' +
+      '<button type="button" class="assignee-btn' + (pendingAssignee===personKey?' on':'') + '" data-assignee="' + personKey + '">' + esc(person.name) + '</button>' +
+      '<button type="button" class="assignee-btn' + (pendingAssignee==='both'?' on':'') + '" data-assignee="both">Both of us</button>' +
       '</div>' +
       '<div class="assignee-toggle" id="cadence-toggle">' +
-      '<button type="button" class="assignee-btn' + (pendingCadence==='daily'?' on':'') + '" data-cadence="daily">Daily</button>' +
+      '<button type="button" class="assignee-btn' + (pendingCadence==='daily'?' on':'') + '" data-cadence="daily">Every day</button>' +
+      '<button type="button" class="assignee-btn' + (pendingCadence==='weekday'?' on':'') + '" data-cadence="weekday">Weekdays</button>' +
+      '<button type="button" class="assignee-btn' + (pendingCadence==='weekend'?' on':'') + '" data-cadence="weekend">Weekends</button>' +
       '<button type="button" class="assignee-btn' + (pendingCadence==='weekly'?' on':'') + '" data-cadence="weekly">Weekly</button>' +
       '</div>' +
       '<button type="button" id="add-habit-btn">Add</button>' +
       '</div>';
+    html += '<div class="cadence-hint">"Weekdays"/"Weekends" goals only show up on the days they apply to — handy for things like a different wake-up or bedtime target.</div>';
     html += '</div>';
 
     html += '<div class="card">';
-    html += '<div class="section-title">Score</div>';
-    html += '<table class="score-table"><thead><tr><th></th><th>' + esc(p1.name) + '</th><th>' + esc(p2.name) + '</th></tr></thead><tbody>';
-    [['Today', [tKey]], ['This week', lastNKeys(7)], ['All-time', Object.keys(STATE.days)]].forEach(function(row){
-      html += '<tr><td>' + row[0] + '</td><td>' + pointsForKeys(STATE, 'p1', row[1]) + '</td><td>' + pointsForKeys(STATE, 'p2', row[1]) + '</td></tr>';
-    });
-    html += '</tbody></table></div>';
-
-    html += '<div class="card">';
-    html += '<div class="section-title">Last 14 days</div>';
+    html += '<div class="section-title">Browse previous days</div>';
     html += '<div class="legend"><span class="legend-swatch" style="background:var(--surface-2); border:1px solid var(--border);"></span>none' +
       '<span class="legend-swatch" style="background:var(--done-soft); border:1px solid var(--done);"></span>partial' +
       '<span class="legend-swatch" style="background:var(--done); border:1px solid var(--done);"></span>all done</div>';
     html += '<div class="history">';
     for (var i = 13; i >= 0; i--){
-      var k = addDaysToKey(tKey, -i);
-      var comp = dayCompletion(STATE, k);
+      var k = addDaysToKey(todayKey(), -i);
+      var comp = dayCompletionForPerson(STATE, k, personKey);
       var bg = 'var(--surface-2)', bd = 'var(--border)';
       if (comp.engaged){
         if (comp.ratio >= 0.999){ bg = 'var(--done)'; bd = 'var(--done)'; }
         else if (comp.ratio > 0){ bg = 'var(--done-soft)'; bd = 'var(--done)'; }
       }
-      html += '<div class="day-cell' + (k===tKey ? ' today' : '') + '" style="background:' + bg + '; border-color:' + bd + ';" title="' + esc(fullDate(k)) + '">' +
-        '<span class="dow">' + esc(dowLabel(k)) + '</span><span class="num">' + esc(dayNum(k)) + '</span></div>';
+      var cls = 'day-cell' + (k===todayKey() ? ' today' : '') + (k===dKey ? ' viewing' : '');
+      html += '<button type="button" class="' + cls + '" style="background:' + bg + '; border-color:' + bd + ';" data-jump-day="' + k + '" title="' + esc(fullDate(k)) + '">' +
+        '<span class="dow">' + esc(dowLabel(k)) + '</span><span class="num">' + esc(dayNum(k)) + '</span></button>';
     }
     html += '</div></div>';
 
@@ -770,14 +1020,81 @@
     wireEvents();
   }
 
+  function renderTile(h, personKey, bucketKey, isWeekly){
+    var c = getCell(STATE, bucketKey, h.id, personKey);
+    var noteKey = h.id + ':' + personKey;
+    var label = cadenceLabel(h);
+    var nameHtml = esc(displayName(h, bucketKey)) + (label ? ' <span style="color:var(--text-muted); font-weight:400; font-size:11px;">(' + label + ')</span>' : '');
+    var html = '<div class="task" data-drag-id="' + h.id + '">';
+    html += '<div class="task-row">' +
+      '<span class="drag-handle" data-drag-handle title="Drag to reorder">⠿</span>' +
+      '<div class="task-name" data-longpress="' + h.id + '">' + nameHtml + '</div>';
+    if (isWeekly){
+      html += '<button type="button" class="pill pm weekly' + (c.done ? ' on' : '') + '" data-toggle-weekly="' + h.id + ':' + personKey + ':' + bucketKey + '">' +
+        (c.done ? '✓ done' : 'not yet') + '</button>';
+    } else {
+      html += '<div class="cell-group">' +
+        '<button type="button" class="pill miss' + (c.missed ? ' on' : '') + '" data-toggle="' + h.id + ':' + personKey + ':missed:' + bucketKey + '" title="Missed">✕</button>' +
+        '<button type="button" class="pill pm' + (c.done ? ' on' : '') + '" data-toggle="' + h.id + ':' + personKey + ':done:' + bucketKey + '" title="Got it done">✓</button>' +
+        '</div>';
+    }
+    html += '<button type="button" class="note-toggle' + (c.note ? ' has-note' : '') + '" data-note-toggle="' + noteKey + '" title="Notes">💬</button>' +
+      '</div>';
+    html += '<div class="note-panel" data-note-panel="' + noteKey + '"' + (expandedNotes[noteKey] ? '' : ' hidden') + '>' +
+      '<button type="button" class="note-banner" data-note-toggle="' + noteKey + '">Note for ' + (isWeekly ? 'this week' : (bucketKey===todayKey() ? 'today' : shortDate(bucketKey))) + ' <span class="chev">▲</span></button>' +
+      '<textarea data-note-input="' + h.id + ':' + personKey + ':' + bucketKey + '" placeholder="Add a note...">' + esc(c.note || '') + '</textarea>' +
+      '</div>';
+    html += '</div>';
+    return html;
+  }
+
+  function render(){
+    var app = document.getElementById('app');
+    if (!app || !STATE) return;
+    if (VIEW.screen === 'person' && VIEW.personKey) renderPersonPage(VIEW.personKey);
+    else renderHome();
+  }
+
+  // ==========================================================================
+  // Event wiring
+  // ==========================================================================
+  var sortableInstances = [];
+
   function wireEvents(){
     var app = document.getElementById('app');
+
+    sortableInstances.forEach(function(s){ try{ s.destroy(); }catch(e){} });
+    sortableInstances = [];
+
+    var goHomeBtn = document.querySelector('[data-go-home]');
+    if (goHomeBtn) goHomeBtn.addEventListener('click', goHome);
+
+    app.querySelectorAll('[data-enter-person]').forEach(function(btn){
+      btn.addEventListener('click', function(){ enterPerson(btn.getAttribute('data-enter-person')); });
+    });
+
+    app.querySelectorAll('[data-nav-day]').forEach(function(btn){
+      btn.addEventListener('click', function(){ navigateDay(parseInt(btn.getAttribute('data-nav-day'), 10)); });
+    });
+    var jumpTodayBtn = document.querySelector('[data-jump-today]');
+    if (jumpTodayBtn) jumpTodayBtn.addEventListener('click', function(){ jumpToDay(todayKey()); });
+    app.querySelectorAll('[data-jump-day]').forEach(function(btn){
+      btn.addEventListener('click', function(){ jumpToDay(btn.getAttribute('data-jump-day')); });
+    });
+
     app.querySelectorAll('[data-toggle]').forEach(function(btn){
       btn.addEventListener('click', function(){
         var parts = btn.getAttribute('data-toggle').split(':');
-        toggle(parts[0], parts[1], parts[2]);
+        toggle(parts[0], parts[1], parts[2], parts[3]);
       });
     });
+    app.querySelectorAll('[data-toggle-weekly]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var parts = btn.getAttribute('data-toggle-weekly').split(':');
+        toggleWeekly(parts[0], parts[1], parts[2]);
+      });
+    });
+
     var LONG_PRESS_MS = 600;
     var MOVE_TOLERANCE = 10;
     app.querySelectorAll('[data-longpress]').forEach(function(el){
@@ -813,10 +1130,12 @@
     if (confirmCancelBtn) confirmCancelBtn.addEventListener('click', cancelRemove);
     var confirmRemoveBtn = app.querySelector('[data-confirm-remove]');
     if (confirmRemoveBtn) confirmRemoveBtn.addEventListener('click', confirmRemove);
+
     app.querySelectorAll('[data-rename]').forEach(function(input){
       input.addEventListener('change', function(){ renamePerson(input.getAttribute('data-rename'), input.value); });
       input.addEventListener('keydown', function(e){ if (e.key==='Enter') input.blur(); });
     });
+
     var addBtn = document.getElementById('add-habit-btn');
     var newHabitInput = document.getElementById('new-habit');
     if (addBtn && newHabitInput){
@@ -843,12 +1162,7 @@
         });
       });
     }
-    app.querySelectorAll('[data-toggle-weekly]').forEach(function(btn){
-      btn.addEventListener('click', function(){
-        var parts = btn.getAttribute('data-toggle-weekly').split(':');
-        toggleWeekly(parts[0], parts[1]);
-      });
-    });
+
     app.querySelectorAll('[data-note-toggle]').forEach(function(btn){
       btn.addEventListener('mousedown', function(e){ e.preventDefault(); });
       btn.addEventListener('click', function(){
@@ -875,6 +1189,7 @@
         render();
       });
     });
+
     var settingsLink = document.getElementById('settings-link');
     if (settingsLink){
       settingsLink.addEventListener('click', function(){
@@ -886,6 +1201,26 @@
           STATE = null;
           renderSetup();
         }
+      });
+    }
+
+    // Drag-to-reorder goal tiles (SortableJS — handles touch + mouse cleanly).
+    if (typeof Sortable !== 'undefined'){
+      app.querySelectorAll('[data-drag-group]').forEach(function(container){
+        var parts = container.getAttribute('data-drag-group').split('|');
+        var personKey = parts[0], group = parts[1];
+        var inst = Sortable.create(container, {
+          handle: '.drag-handle',
+          animation: 150,
+          ghostClass: 'sortable-ghost',
+          chosenClass: 'sortable-chosen',
+          dragClass: 'sortable-drag',
+          onEnd: function(){
+            var ids = Array.prototype.slice.call(container.children).map(function(el){ return el.getAttribute('data-drag-id'); });
+            reorderGroup(personKey, group, ids);
+          }
+        });
+        sortableInstances.push(inst);
       });
     }
   }
@@ -943,6 +1278,7 @@
   function startApp(){
     var cached = loadCache();
     if (cached && !STATE){ STATE = normalizeState(cached); applyPendingOps(STATE); }
+    VIEW = { screen: 'home', personKey: null, dateKey: todayKey() };
     if (STATE) render();
     refreshFromRemote(true);
     clearInterval(pollTimer);
