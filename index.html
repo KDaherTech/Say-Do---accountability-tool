@@ -97,13 +97,28 @@
   }
   .task-name.pressing{background:var(--danger-soft); color:var(--danger);}
   .empty{padding:22px 18px; color:var(--text-muted); font-size:14px; line-height:1.6;}
-  .add-row{display:flex; gap:8px; padding:12px 14px 14px; border-top:1px solid var(--border); flex-wrap:wrap;}
-  .assignee-toggle{display:flex; gap:4px; background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:3px;}
-  .assignee-btn{
-    font-family:'Karla',sans-serif; font-size:12px; font-weight:700; border:none; background:transparent; color:var(--text-muted);
-    border-radius:7px; padding:6px 10px; cursor:pointer;
+  .add-form{padding:14px 14px 2px;}
+  .add-field{margin-bottom:14px;}
+  .add-label{
+    display:block; font-family:'IBM Plex Mono',monospace; font-size:10.5px; text-transform:uppercase;
+    letter-spacing:.06em; color:var(--text-muted); margin-bottom:7px;
   }
-  .assignee-btn.on{background:var(--text); color:var(--bg); box-shadow:0 1px 2px rgba(0,0,0,.08);}
+  .add-form > .add-field:first-child input{
+    width:100%; font-family:'Karla',sans-serif; font-size:14px; padding:10px 12px; border-radius:10px;
+    border:1px solid var(--border); background:var(--surface-2); color:var(--text); box-sizing:border-box;
+  }
+  .add-form > .add-field:first-child input:focus-visible{outline:2px solid var(--ring); outline-offset:1px;}
+  .add-submit{
+    width:100%; font-family:'Karla',sans-serif; font-weight:700; font-size:14px; border:none; border-radius:10px;
+    background:var(--text); color:var(--bg); padding:12px 16px; cursor:pointer; margin-bottom:6px;
+  }
+  .add-submit:disabled{opacity:.4; cursor:default;}
+  .assignee-toggle{display:flex; gap:5px; background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:4px; flex-wrap:wrap;}
+  .assignee-btn{
+    font-family:'Karla',sans-serif; font-size:12.5px; font-weight:700; border:1.5px solid transparent; background:transparent; color:var(--text-muted);
+    border-radius:8px; padding:8px 12px; cursor:pointer;
+  }
+  .assignee-btn.on{background:var(--done-soft); color:var(--done); border-color:var(--done);}
   .assignee-btn:focus-visible{outline:2px solid var(--ring);}
   .score-table{width:100%; border-collapse:collapse; margin:2px 4px 14px; font-family:'IBM Plex Mono',monospace;}
   .score-table th, .score-table td{padding:8px 14px; text-align:left; font-size:13px; font-variant-numeric:tabular-nums;}
@@ -166,17 +181,7 @@
     box-sizing:border-box;
   }
   .note-panel textarea:focus-visible{outline:2px solid var(--ring); outline-offset:1px;}
-  .add-row input{
-    flex:1; font-family:'Karla',sans-serif; font-size:14px; padding:9px 12px; border-radius:10px;
-    border:1px solid var(--border); background:var(--surface-2); color:var(--text);
-  }
-  .add-row input:focus-visible{outline:2px solid var(--ring); outline-offset:1px;}
-  .add-row button{
-    font-family:'Karla',sans-serif; font-weight:700; font-size:13px; border:none; border-radius:10px;
-    background:var(--text); color:var(--bg); padding:0 16px; cursor:pointer;
-  }
-  .add-row button:disabled{opacity:.4; cursor:default;}
-  .cadence-hint{font-size:11px; color:var(--text-muted); padding:0 14px 12px; margin-top:-8px;}
+  .cadence-hint{font-size:11px; color:var(--text-muted); padding:0 14px 12px; margin-top:-6px;}
   .history{display:flex; gap:6px; overflow-x:auto; padding:4px 2px 8px;}
   .day-cell{
     flex:0 0 auto; width:38px; height:44px; border-radius:9px; border:1px solid var(--border);
@@ -960,20 +965,24 @@
 
     html += '<div class="card">';
     html += '<div class="section-title">Add a goal</div>';
-    html += '<div class="add-row">' +
+    html += '<div class="add-form">';
+    html += '<div class="add-field">' +
       '<input type="text" id="new-habit" maxlength="60" placeholder="Add a goal, e.g. 20-minute walk" value="' + esc(pendingNewHabitVal) + '" />' +
-      '<div class="assignee-toggle" id="assignee-toggle">' +
-      '<button type="button" class="assignee-btn' + (pendingAssignee===personKey?' on':'') + '" data-assignee="' + personKey + '">' + esc(person.name) + '</button>' +
-      '<button type="button" class="assignee-btn' + (pendingAssignee==='both'?' on':'') + '" data-assignee="both">Both of us</button>' +
-      '</div>' +
-      '<div class="assignee-toggle" id="cadence-toggle">' +
-      '<button type="button" class="assignee-btn' + (pendingCadence==='daily'?' on':'') + '" data-cadence="daily">Every day</button>' +
-      '<button type="button" class="assignee-btn' + (pendingCadence==='weekday'?' on':'') + '" data-cadence="weekday">Weekdays</button>' +
-      '<button type="button" class="assignee-btn' + (pendingCadence==='weekend'?' on':'') + '" data-cadence="weekend">Weekends</button>' +
-      '<button type="button" class="assignee-btn' + (pendingCadence==='weekly'?' on':'') + '" data-cadence="weekly">Weekly</button>' +
-      '</div>' +
-      '<button type="button" id="add-habit-btn">Add</button>' +
       '</div>';
+    html += '<div class="add-field"><span class="add-label">For</span>' +
+      '<div class="assignee-toggle" id="assignee-toggle">' +
+      '<button type="button" class="assignee-btn' + (pendingAssignee===personKey?' on':'') + '" data-assignee="' + personKey + '">' + (pendingAssignee===personKey?'✓ ':'') + esc(person.name) + '</button>' +
+      '<button type="button" class="assignee-btn' + (pendingAssignee==='both'?' on':'') + '" data-assignee="both">' + (pendingAssignee==='both'?'✓ ':'') + 'Both of us</button>' +
+      '</div></div>';
+    html += '<div class="add-field"><span class="add-label">Repeats</span>' +
+      '<div class="assignee-toggle" id="cadence-toggle">' +
+      '<button type="button" class="assignee-btn' + (pendingCadence==='daily'?' on':'') + '" data-cadence="daily">' + (pendingCadence==='daily'?'✓ ':'') + 'Every day</button>' +
+      '<button type="button" class="assignee-btn' + (pendingCadence==='weekday'?' on':'') + '" data-cadence="weekday">' + (pendingCadence==='weekday'?'✓ ':'') + 'Weekdays</button>' +
+      '<button type="button" class="assignee-btn' + (pendingCadence==='weekend'?' on':'') + '" data-cadence="weekend">' + (pendingCadence==='weekend'?'✓ ':'') + 'Weekends</button>' +
+      '<button type="button" class="assignee-btn' + (pendingCadence==='weekly'?' on':'') + '" data-cadence="weekly">' + (pendingCadence==='weekly'?'✓ ':'') + 'Weekly</button>' +
+      '</div></div>';
+    html += '<button type="button" id="add-habit-btn" class="add-submit">Add goal</button>';
+    html += '</div>';
     html += '<div class="cadence-hint">"Weekdays"/"Weekends" goals only show up on the days they apply to — handy for things like a different wake-up or bedtime target.</div>';
     html += '</div>';
 
@@ -1149,7 +1158,7 @@
       assigneeToggle.querySelectorAll('.assignee-btn').forEach(function(btn){
         btn.addEventListener('click', function(){
           pendingAssignee = btn.getAttribute('data-assignee');
-          assigneeToggle.querySelectorAll('.assignee-btn').forEach(function(b){ b.classList.toggle('on', b === btn); });
+          render(); // full re-render so the ✓ label and fill move together, not just the class
         });
       });
     }
@@ -1158,7 +1167,7 @@
       cadenceToggle.querySelectorAll('.assignee-btn').forEach(function(btn){
         btn.addEventListener('click', function(){
           pendingCadence = btn.getAttribute('data-cadence');
-          cadenceToggle.querySelectorAll('.assignee-btn').forEach(function(b){ b.classList.toggle('on', b === btn); });
+          render(); // same here
         });
       });
     }
