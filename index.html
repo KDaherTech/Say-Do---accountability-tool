@@ -817,6 +817,19 @@
   var status = 'idle'; // idle|loading|saving|saved|offline|error
   var saveTimer = null;
   var pollTimer = null;
+  // jsonbin.io's free tier has a monthly request cap, and this app used to
+  // poll every 20s even in a backgrounded tab — easy to blow through. Poll
+  // every few minutes instead, and only while the tab is actually visible.
+  var POLL_INTERVAL_MS = 3 * 60 * 1000;
+
+  function startPolling(){
+    clearInterval(pollTimer);
+    pollTimer = setInterval(function(){ refreshFromRemote(false); }, POLL_INTERVAL_MS);
+  }
+  function stopPolling(){
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
 
   // VIEW drives which screen renders. It is intentionally NOT persisted to
   // localStorage: every fresh visit lands on the home/profile-picker screen,
@@ -2181,7 +2194,7 @@
         if (confirm('Disconnect this device from the shared tracker? You can reconnect any time with the same Bin ID and key.')){
           clearConfigLocal();
           clearTimeout(saveTimer);
-          clearInterval(pollTimer);
+          stopPolling();
           CONFIG = null;
           STATE = null;
           renderSetup();
@@ -2266,10 +2279,16 @@
     VIEW = { screen: 'home', personKey: null, dateKey: todayKey() };
     if (STATE) render();
     refreshFromRemote(true);
-    clearInterval(pollTimer);
-    pollTimer = setInterval(function(){ refreshFromRemote(false); }, 20000);
+    // Poll every few minutes while the tab is visible, and stop entirely
+    // while it's hidden — no point burning requests on a backgrounded tab.
+    startPolling();
     document.addEventListener('visibilitychange', function(){
-      if (document.visibilityState === 'visible') refreshFromRemote(false);
+      if (document.visibilityState === 'visible'){
+        refreshFromRemote(false);
+        startPolling();
+      } else {
+        stopPolling();
+      }
     });
     document.addEventListener('keydown', function(e){
       if (e.key !== 'Escape') return;
