@@ -319,6 +319,52 @@
     background:var(--text); color:var(--bg); padding:12px 16px; cursor:pointer;
   }
   .wizard-hint{font-size:11.5px; color:var(--text-muted); line-height:1.5; margin-top:2px;}
+  .wizard-input{
+    width:100%; font-family:'Karla',sans-serif; font-size:14px; padding:10px 12px; border-radius:10px;
+    border:1px solid var(--border); background:var(--surface-2); color:var(--text); box-sizing:border-box; margin-bottom:14px;
+  }
+  .wizard-input:focus-visible{outline:2px solid var(--ring); outline-offset:1px;}
+  .wizard-summary{font-size:13.5px; line-height:1.6; color:var(--text-muted); margin:0 0 18px;}
+
+  .tracker-row{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 18px; border-top:1px solid var(--border); flex-wrap:wrap;}
+  .tracker-row:first-child{border-top:none;}
+  .tracker-info{min-width:0;}
+  .tracker-name{font-weight:700; font-size:14px;}
+  .tracker-meta{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-muted); margin-top:3px;}
+  .tracker-actions{display:flex; gap:6px; flex-wrap:wrap;}
+  .tracker-btn{
+    font-family:'Karla',sans-serif; font-weight:700; font-size:12px; border-radius:8px; border:1px solid var(--border);
+    background:var(--surface-2); color:var(--text); padding:7px 12px; cursor:pointer;
+  }
+  .tracker-btn:hover{border-color:var(--ring);}
+  .tracker-btn:focus-visible{outline:2px solid var(--ring);}
+  .tracker-btn.danger{color:var(--danger); border-color:var(--danger-soft);}
+  .tracker-btn.danger:hover{background:var(--danger-soft);}
+
+  .category-chips{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px;}
+  .category-chip{
+    font-family:'Karla',sans-serif; font-weight:700; font-size:11.5px; border-radius:999px; border:1px solid var(--border);
+    background:var(--surface-2); color:var(--text-muted); padding:6px 12px; cursor:pointer;
+  }
+  .category-chip:hover{border-color:var(--ring);}
+  .category-chip.active{background:var(--done-soft); border-color:var(--done); color:var(--done);}
+  .category-chip:focus-visible{outline:2px solid var(--ring);}
+
+  .toggle-pill{
+    display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%;
+    font-family:'Karla',sans-serif; font-size:13px; border:1.5px solid var(--border); border-radius:10px;
+    background:var(--surface-2); color:var(--text); padding:11px 14px; cursor:pointer; margin-bottom:16px; text-align:left;
+  }
+  .toggle-pill .switch{
+    width:34px; height:20px; border-radius:999px; background:var(--border); position:relative; flex:0 0 auto; transition:background .15s ease;
+  }
+  .toggle-pill .switch::after{
+    content:''; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:var(--surface); transition:transform .15s ease;
+  }
+  .toggle-pill.on{border-color:var(--done);}
+  .toggle-pill.on .switch{background:var(--done);}
+  .toggle-pill.on .switch::after{transform:translateX(14px);}
+  .toggle-pill:focus-visible{outline:2px solid var(--ring);}
 
   .setup-wrap{max-width:420px; margin:60px auto; padding:0 20px;}
   .setup-card{background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:26px 24px;}
@@ -411,15 +457,15 @@
   function monthKeyFor(key){ return key.slice(0, 7); } // 'YYYY-MM'
 
   function dailyHabits(state){
-    return state.habits.filter(function(h){ return h.cadence !== 'weekly' && h.cadence !== 'monthly'; });
+    return state.habits.filter(function(h){ return !h.archived && h.cadence !== 'weekly' && h.cadence !== 'monthly'; });
   }
 
   function weeklyHabits(state){
-    return state.habits.filter(function(h){ return h.cadence === 'weekly'; });
+    return state.habits.filter(function(h){ return !h.archived && h.cadence === 'weekly'; });
   }
 
   function monthlyHabits(state){
-    return state.habits.filter(function(h){ return h.cadence === 'monthly'; });
+    return state.habits.filter(function(h){ return !h.archived && h.cadence === 'monthly'; });
   }
 
   function assigneePeople(state, h){
@@ -489,6 +535,7 @@
   function pointsForBucket(state, bucketKey, personKey, cadenceFilter){
     var pts = 0;
     state.habits.forEach(function(h){
+      if (h.archived) return;
       if (!(h.assignee === 'both' || h.assignee === personKey)) return;
       var hc = h.cadence || 'daily';
       if (cadenceFilter && !cadenceFilter(hc)) return;
@@ -566,6 +613,34 @@
     return habitList.filter(function(h){ return h.assignee === 'both' || h.assignee === personKey; });
   }
 
+  function personHasNoGoals(state, key){
+    return habitsFor(dailyHabits(state), key).length === 0 &&
+      habitsFor(weeklyHabits(state), key).length === 0 &&
+      habitsFor(monthlyHabits(state), key).length === 0;
+  }
+
+  // The set of currently-active (non-archived) habits a tracker-setup scope
+  // "owns". A single-person scope only owns that person's own habits — shared
+  // 'both' habits are left alone unless the household ('both') scope is
+  // chosen, which is a full reset covering everyone's goals at once.
+  function habitsForScope(state, scope){
+    if (scope === 'both'){
+      return state.habits.filter(function(h){
+        return !h.archived && (h.assignee === 'p1' || h.assignee === 'p2' || h.assignee === 'both');
+      });
+    }
+    return state.habits.filter(function(h){ return !h.archived && h.assignee === scope; });
+  }
+
+  // STATE is declared later in this file with `var`, so it's hoisted and
+  // already in scope here even though it isn't assigned until runtime; this
+  // function is only ever called after STATE has a value.
+  function defaultTrackerName(scope){
+    if (scope === 'both') return 'Our goals — ' + shortDate(todayKey());
+    var p = personByKey(STATE, scope);
+    return (p ? p.name : 'My') + '’s goals — ' + shortDate(todayKey());
+  }
+
   function emptyOrder(){ return {main:[], weekly:[], monthly:[]}; }
 
   function ensureOrder(state){
@@ -595,6 +670,8 @@
     if (!s.people) s.people = [{key:'p1',name:'Khaled'},{key:'p2',name:'Nat'}];
     if (!s.habits) s.habits = [];
     if (!s.days) s.days = {};
+    if (!s.trackerLibrary) s.trackerLibrary = [];
+    if (!s.templates) s.templates = [];
     ensureOrder(s);
     return s;
   }
@@ -676,6 +753,32 @@
       } else if (op.type === 'reorder'){
         ensureOrder(state);
         if (state.order[op.personKey]) state.order[op.personKey][op.group] = op.order;
+      } else if (op.type === 'archive'){
+        var ah = state.habits.find(function(h){ return h.id === op.habitId; });
+        if (ah) ah.archived = true;
+      } else if (op.type === 'unarchive'){
+        var uh = state.habits.find(function(h){ return h.id === op.habitId; });
+        if (uh) uh.archived = false;
+      } else if (op.type === 'addTracker'){
+        if (!state.trackerLibrary) state.trackerLibrary = [];
+        if (!state.trackerLibrary.some(function(t){ return t.id === op.entry.id; })) state.trackerLibrary.push(op.entry);
+      } else if (op.type === 'deleteTracker'){
+        state.trackerLibrary = (state.trackerLibrary || []).filter(function(t){ return t.id !== op.id; });
+      } else if (op.type === 'renameTracker'){
+        var tr = (state.trackerLibrary || []).find(function(t){ return t.id === op.id; });
+        if (tr) tr.name = op.name;
+      } else if (op.type === 'addTemplate'){
+        if (!state.templates) state.templates = [];
+        if (!state.templates.some(function(t){ return t.id === op.template.id; })) state.templates.push(op.template);
+      } else if (op.type === 'updateTemplate'){
+        var ut = (state.templates || []).find(function(t){ return t.id === op.id; });
+        if (ut){
+          if (op.name !== undefined) ut.name = op.name;
+          if (op.category !== undefined) ut.category = op.category;
+          if (op.isPublic !== undefined) ut.isPublic = op.isPublic;
+        }
+      } else if (op.type === 'deleteTemplate'){
+        state.templates = (state.templates || []).filter(function(t){ return t.id !== op.id; });
       }
     });
     return true;
@@ -795,9 +898,23 @@
     VIEW.screen = 'home'; VIEW.personKey = null;
     render();
   }
+  function goTrackers(){
+    VIEW.screen = 'trackers';
+    render();
+  }
   function enterPerson(key){
     VIEW.screen = 'person'; VIEW.personKey = key; VIEW.dateKey = todayKey();
+    // First time this person has ever opened their page with nothing set up
+    // (no active goals, no saved tracker to fall back to) — offer the
+    // template/custom setup wizard automatically, pre-aimed at just them
+    // (they can still back up to "who" and pick Both if they'd rather).
+    var offerSetup = personHasNoGoals(STATE, key) &&
+      !STATE.trackerLibrary.some(function(t){ return t.scope === key || t.scope === 'both'; });
     render();
+    if (offerSetup){
+      trackerWizard = {screen:'kind', scope:key, kind:null, libraryEntryId:null, templateId:null, saveName:'', categoryFilter:'All', history:['who']};
+      render();
+    }
   }
   function navigateDay(delta){
     var nk = addDaysToKey(VIEW.dateKey, delta);
@@ -964,6 +1081,317 @@
   }
 
   // ==========================================================================
+  // Account/tracker setup wizard: who -> template or custom or load-a-saved-
+  // tracker -> (if it would touch existing goals) name a save for them ->
+  // confirm. `trackerWizard` is null when closed. Screens form a small stack
+  // (`history`) rather than fixed step numbers, since the load-a-saved-
+  // tracker and "nothing to save" cases branch the flow.
+  // ==========================================================================
+  var trackerWizard = null;
+  var renamingTrackerId = null;
+  var confirmDeleteTrackerId = null;
+  var renamingTemplateId = null;
+  var editingTemplateCategoryId = null;
+  var confirmDeleteTemplateId = null;
+  var templateSaveModal = null; // {scope, name, category, isPublic}
+
+  var CATEGORY_SUGGESTIONS = ['Fitness', 'Wellness', 'Productivity', 'Discipline Challenge', 'Morning Routine'];
+
+  var TEMPLATE_75HARD = [
+    {name:'Workout 1 – 45 min', points:1},
+    {name:'Workout 2 – 45 min (outdoors)', points:1},
+    {name:'Follow my diet (no cheat meals, no alcohol)', points:1},
+    {name:'Drink a gallon of water', points:1},
+    {name:'Read 10 pages of a nonfiction book', points:1},
+    {name:'Take a daily progress photo', points:1}
+  ];
+
+  function openTrackerWizard(){
+    trackerWizard = {screen:'who', scope:null, kind:null, libraryEntryId:null, templateId:null, saveName:'', categoryFilter:'All', history:[]};
+    render();
+  }
+  function closeTrackerWizard(){ trackerWizard = null; render(); }
+  function trackerWizardGo(next){
+    trackerWizard.history.push(trackerWizard.screen);
+    trackerWizard.screen = next;
+  }
+  function trackerWizardBack(){
+    if (!trackerWizard) return;
+    var prev = trackerWizard.history.pop();
+    if (prev) trackerWizard.screen = prev; else trackerWizard = null;
+    render();
+  }
+  function trackerWizardChooseScope(scope){
+    if (!trackerWizard) return;
+    trackerWizard.scope = scope;
+    // If a kind was already pre-selected (e.g. "Apply" on a saved template
+    // from My Trackers), skip straight past the "what would you like to set
+    // up" screen instead of asking again.
+    if (trackerWizard.kind) trackerWizardAfterKindOrLoad();
+    else trackerWizardGo('kind');
+    render();
+  }
+  function trackerWizardAfterKindOrLoad(){
+    var hasCurrent = habitsForScope(STATE, trackerWizard.scope).length > 0;
+    if (hasCurrent){
+      trackerWizard.saveName = defaultTrackerName(trackerWizard.scope);
+      trackerWizardGo('saveName');
+    } else {
+      trackerWizardGo('confirm');
+    }
+  }
+  function trackerWizardChooseKind(kind){
+    if (!trackerWizard) return;
+    if (kind === 'load'){
+      trackerWizard.kind = 'load';
+      trackerWizardGo('loadPick');
+    } else if (kind === 'chooseTemplate'){
+      trackerWizardGo('templatePick');
+    } else {
+      trackerWizard.kind = kind;
+      trackerWizardAfterKindOrLoad();
+    }
+    render();
+  }
+  function trackerWizardSetCategoryFilter(cat){
+    if (!trackerWizard) return;
+    trackerWizard.categoryFilter = cat;
+    render();
+  }
+  function trackerWizardPickTemplate(id){
+    if (!trackerWizard) return;
+    trackerWizard.kind = 'customTemplate';
+    trackerWizard.templateId = id;
+    trackerWizardAfterKindOrLoad();
+    render();
+  }
+  function trackerWizardPickLibrary(id){
+    if (!trackerWizard) return;
+    trackerWizard.libraryEntryId = id;
+    trackerWizardAfterKindOrLoad();
+    render();
+  }
+  function trackerWizardSetSaveName(v){ if (trackerWizard) trackerWizard.saveName = v; }
+  function trackerWizardContinueFromSaveName(){
+    if (!trackerWizard) return;
+    trackerWizardGo('confirm');
+    render();
+  }
+  function trackerWizardSubmit(){
+    if (!trackerWizard) return;
+    var scope = trackerWizard.scope, kind = trackerWizard.kind;
+    var opts = {saveName: trackerWizard.saveName, libraryEntryId: trackerWizard.libraryEntryId, templateId: trackerWizard.templateId};
+    // Close the wizard first — applyTrackerChange() calls render() as part of
+    // applying the change, and that render should already show the plain
+    // page underneath, not the wizard overlay lingering until the next save.
+    trackerWizard = null;
+    applyTrackerChange(scope, kind, opts);
+  }
+
+  // Jump straight into "load this saved tracker", skipping the who/kind
+  // screens — used by the My Trackers management screen's Load button.
+  function startLoadFromLibrary(entryId){
+    var entry = STATE.trackerLibrary.find(function(t){ return t.id === entryId; });
+    if (!entry) return;
+    trackerWizard = {screen:'confirm', scope:entry.scope, kind:'load', libraryEntryId:entryId, templateId:null, saveName:'', categoryFilter:'All', history:['kind']};
+    if (habitsForScope(STATE, entry.scope).length > 0){
+      trackerWizard.saveName = defaultTrackerName(entry.scope);
+      trackerWizard.screen = 'saveName';
+    }
+    render();
+  }
+
+  // Jump into "apply this saved template", asking only who it's for — used
+  // by the My Trackers management screen's Apply button on a template.
+  function startApplyTemplate(templateId){
+    var tpl = STATE.templates.find(function(t){ return t.id === templateId; });
+    if (!tpl) return;
+    trackerWizard = {screen:'who', scope:null, kind:'customTemplate', libraryEntryId:null, templateId:templateId, saveName:'', categoryFilter:'All', history:[]};
+    render();
+  }
+
+  function applyTrackerChange(scope, kind, opts){
+    opts = opts || {};
+    var current = habitsForScope(STATE, scope);
+    if (current.length){
+      var name = (opts.saveName || '').trim().slice(0, 40) || defaultTrackerName(scope);
+      var savedEntry = {id: genId(), name: name, scope: scope, savedAt: todayKey(), habitIds: current.map(function(h){ return h.id; })};
+      STATE.trackerLibrary.push(savedEntry);
+      queueOp('addTracker|' + savedEntry.id, {type:'addTracker', entry: savedEntry});
+      current.forEach(function(h){
+        h.archived = true;
+        queueOp('archive|' + h.id, {type:'archive', habitId: h.id});
+      });
+    }
+    if (kind === 'hard75'){
+      TEMPLATE_75HARD.forEach(function(item){
+        var h = {id: genId(), name: item.name, assignee: scope, points: clampPoints(item.points), archived:false};
+        STATE.habits.push(h);
+        queueOp('add|' + h.id, {type:'add', habit:h});
+      });
+    } else if (kind === 'customTemplate'){
+      var tpl = STATE.templates.find(function(t){ return t.id === opts.templateId; });
+      if (tpl){
+        tpl.items.forEach(function(item){
+          var h = {id: genId(), name: item.name, assignee: scope, points: clampPoints(item.points || 1), archived:false};
+          if (item.cadence && item.cadence !== 'daily') h.cadence = item.cadence;
+          STATE.habits.push(h);
+          queueOp('add|' + h.id, {type:'add', habit:h});
+        });
+      }
+    } else if (kind === 'load'){
+      var entry = STATE.trackerLibrary.find(function(t){ return t.id === opts.libraryEntryId; });
+      if (entry){
+        entry.habitIds.forEach(function(id){
+          var h = STATE.habits.find(function(hh){ return hh.id === id; });
+          if (h){
+            h.archived = false;
+            queueOp('unarchive|' + h.id, {type:'unarchive', habitId: h.id});
+          }
+        });
+      }
+    }
+    // kind === 'custom': nothing further — the scope is now a clean slate,
+    // ready for "Add a goal".
+    render();
+    scheduleSave();
+  }
+
+  function renameTracker(id, name){
+    name = (name || '').trim().slice(0, 40);
+    if (!name) return;
+    var t = STATE.trackerLibrary.find(function(tt){ return tt.id === id; });
+    if (t) t.name = name;
+    queueOp('renameTracker|' + id, {type:'renameTracker', id:id, name:name});
+    render();
+    scheduleSave();
+  }
+
+  // ==========================================================================
+  // Save-as-template: capture a person's CURRENT goal definitions as a named,
+  // categorized, reusable template — independent of the live habit ids, so it
+  // survives edits/removals and can be applied again for either of you (or,
+  // eventually, shared). Unlike the tracker library, this never archives
+  // anything: it's a copy, not a move.
+  // ==========================================================================
+  function uniqueTemplateCategories(){
+    var set = {};
+    STATE.templates.forEach(function(t){ set[t.category] = true; });
+    return Object.keys(set).sort();
+  }
+
+  function defaultTemplateName(scope){
+    var p = personByKey(STATE, scope);
+    return (p ? p.name + '’s' : 'My') + ' Routine';
+  }
+
+  function collectCurrentItems(scope){
+    var list = habitsFor(dailyHabits(STATE), scope)
+      .concat(habitsFor(weeklyHabits(STATE), scope))
+      .concat(habitsFor(monthlyHabits(STATE), scope));
+    return list.map(function(h){
+      var item = {name: h.name, points: h.points || 1};
+      if (h.cadence && h.cadence !== 'daily') item.cadence = h.cadence;
+      return item;
+    });
+  }
+
+  function openSaveTemplateModal(scope){
+    if (!collectCurrentItems(scope).length) return;
+    templateSaveModal = {scope: scope, name: defaultTemplateName(scope), category: '', isPublic: false};
+    render();
+  }
+  function closeSaveTemplateModal(){ templateSaveModal = null; render(); }
+  function saveTemplateModalSetName(v){ if (templateSaveModal) templateSaveModal.name = v; }
+  function saveTemplateModalSetCategory(v){ if (templateSaveModal) templateSaveModal.category = v; }
+  function saveTemplateModalTogglePublic(){
+    if (!templateSaveModal) return;
+    templateSaveModal.isPublic = !templateSaveModal.isPublic;
+    render();
+  }
+  function submitSaveTemplateModal(){
+    if (!templateSaveModal) return;
+    var scope = templateSaveModal.scope;
+    var items = collectCurrentItems(scope);
+    if (!items.length){ templateSaveModal = null; render(); return; }
+    var name = (templateSaveModal.name || '').trim().slice(0, 40) || defaultTemplateName(scope);
+    var category = (templateSaveModal.category || '').trim().slice(0, 30) || 'Custom';
+    var tpl = {
+      id: genId(), name: name, category: category, isPublic: !!templateSaveModal.isPublic,
+      createdAt: todayKey(), createdByScope: scope, items: items
+    };
+    STATE.templates.push(tpl);
+    queueOp('addTemplate|' + tpl.id, {type:'addTemplate', template: tpl});
+    templateSaveModal = null;
+    render();
+    scheduleSave();
+  }
+
+  function renameTemplate(id, name){
+    name = (name || '').trim().slice(0, 40);
+    if (!name) return;
+    var t = STATE.templates.find(function(tt){ return tt.id === id; });
+    if (t) t.name = name;
+    queueOp('updateTemplate|' + id + '|name', {type:'updateTemplate', id:id, name:name});
+    render();
+    scheduleSave();
+  }
+  function recategorizeTemplate(id, category){
+    category = (category || '').trim().slice(0, 30) || 'Custom';
+    var t = STATE.templates.find(function(tt){ return tt.id === id; });
+    if (t) t.category = category;
+    queueOp('updateTemplate|' + id + '|category', {type:'updateTemplate', id:id, category:category});
+    render();
+    scheduleSave();
+  }
+  function toggleTemplatePublic(id){
+    var t = STATE.templates.find(function(tt){ return tt.id === id; });
+    if (!t) return;
+    t.isPublic = !t.isPublic;
+    queueOp('updateTemplate|' + id + '|isPublic', {type:'updateTemplate', id:id, isPublic:t.isPublic});
+    render();
+    scheduleSave();
+  }
+  function requestDeleteTemplate(id){ confirmDeleteTemplateId = id; render(); }
+  function cancelDeleteTemplate(){ confirmDeleteTemplateId = null; render(); }
+  function confirmDeleteTemplate(){
+    var id = confirmDeleteTemplateId;
+    confirmDeleteTemplateId = null;
+    if (id){
+      STATE.templates = STATE.templates.filter(function(t){ return t.id !== id; });
+      queueOp('deleteTemplate|' + id, {type:'deleteTemplate', id:id});
+      scheduleSave();
+    }
+    render();
+  }
+
+  function requestDeleteTracker(id){ confirmDeleteTrackerId = id; render(); }
+  function cancelDeleteTracker(){ confirmDeleteTrackerId = null; render(); }
+  function confirmDeleteTracker(){
+    var id = confirmDeleteTrackerId;
+    confirmDeleteTrackerId = null;
+    if (id) deleteTrackerLibraryEntry(id);
+    render();
+  }
+  function deleteTrackerLibraryEntry(id){
+    var entry = STATE.trackerLibrary.find(function(t){ return t.id === id; });
+    if (!entry) return;
+    var idsToRemove = entry.habitIds.filter(function(hid){
+      var h = STATE.habits.find(function(hh){ return hh.id === hid; });
+      return h && h.archived;
+    });
+    if (idsToRemove.length){
+      var removeSet = {};
+      idsToRemove.forEach(function(hid){ removeSet[hid] = true; });
+      STATE.habits = STATE.habits.filter(function(h){ return !removeSet[h.id]; });
+      idsToRemove.forEach(function(hid){ queueOp('remove|' + hid, {type:'remove', habitId:hid}); });
+    }
+    STATE.trackerLibrary = STATE.trackerLibrary.filter(function(t){ return t.id !== id; });
+    queueOp('deleteTracker|' + id, {type:'deleteTracker', id:id});
+    scheduleSave();
+  }
+
+  // ==========================================================================
   // Rendering: Home (profile picker + leaderboard + insights)
   // ==========================================================================
   function renderHome(){
@@ -1031,7 +1459,12 @@
     html += '</div></div>';
 
     html += '<footer><span class="status-dot" id="status-dot"></span><span id="status-label">Ready</span>' +
-      '<span style="flex:1"></span><button type="button" class="settings-link" id="settings-link">Settings</button></footer>';
+      '<span style="flex:1"></span>' +
+      '<button type="button" class="settings-link" data-open-tracker-wizard>Set up tracker</button>' +
+      '<button type="button" class="settings-link" data-go-trackers>My trackers</button>' +
+      '<button type="button" class="settings-link" id="settings-link">Settings</button></footer>';
+
+    if (trackerWizard) html += renderTrackerWizard();
 
     app.innerHTML = html;
     setStatus(status);
@@ -1141,7 +1574,11 @@
     html += '</div></div>';
 
     html += '<footer><span class="status-dot" id="status-dot"></span><span id="status-label">Ready</span>' +
-      '<span style="flex:1"></span><button type="button" class="settings-link" id="settings-link">Settings</button></footer>';
+      '<span style="flex:1"></span>' +
+      (personHasNoGoals(STATE, personKey) ? '' : '<button type="button" class="settings-link" data-save-as-template>Save as template</button>') +
+      '<button type="button" class="settings-link" data-open-tracker-wizard>Set up tracker</button>' +
+      '<button type="button" class="settings-link" data-go-trackers>My trackers</button>' +
+      '<button type="button" class="settings-link" id="settings-link">Settings</button></footer>';
 
     if (confirmRemoveId){
       var pendingHabit = STATE.habits.find(function(h){ return h.id === confirmRemoveId; });
@@ -1159,6 +1596,8 @@
     }
 
     if (wizard) html += renderWizard(p1, p2);
+    if (trackerWizard) html += renderTrackerWizard();
+    if (templateSaveModal) html += renderSaveTemplateModal();
 
     app.innerHTML = html;
     setStatus(status);
@@ -1211,6 +1650,230 @@
     return html;
   }
 
+  function renderTrackerWizard(){
+    var tw = trackerWizard;
+    var p1 = STATE.people[0], p2 = STATE.people[1];
+    var html = '<div class="wizard-overlay" data-tracker-wizard-overlay>';
+    html += '<div class="wizard-box">';
+    html += '<button type="button" class="wizard-close" data-tracker-wizard-close title="Cancel">✕</button>';
+    html += '<div class="wizard-progress">Set up a tracker</div>';
+    if (tw.history.length){
+      html += '<button type="button" class="wizard-back" data-tracker-wizard-back>&larr; Back</button>';
+    }
+
+    if (tw.screen === 'who'){
+      html += '<h3 class="wizard-q">Who is this tracker for?</h3>';
+      html += '<div class="wizard-options wizard-options-3">' +
+        '<button type="button" class="wizard-opt" data-tracker-scope="' + p1.key + '">' + esc(p1.name) + '</button>' +
+        '<button type="button" class="wizard-opt" data-tracker-scope="' + p2.key + '">' + esc(p2.name) + '</button>' +
+        '<button type="button" class="wizard-opt" data-tracker-scope="both">Both</button>' +
+        '</div>';
+    } else if (tw.screen === 'kind'){
+      var hasSaved = STATE.trackerLibrary.some(function(t){ return t.scope === tw.scope; });
+      var hasTemplates = STATE.templates.length > 0;
+      html += '<h3 class="wizard-q">What would you like to set up?</h3>';
+      html += '<div class="wizard-options wizard-options-list">' +
+        '<button type="button" class="wizard-opt" data-tracker-kind="hard75">🏆 75 Hard</button>' +
+        (hasTemplates ? '<button type="button" class="wizard-opt" data-tracker-kind="chooseTemplate">📋 Choose a template</button>' : '') +
+        '<button type="button" class="wizard-opt" data-tracker-kind="custom">✏️ Build your own</button>' +
+        (hasSaved ? '<button type="button" class="wizard-opt" data-tracker-kind="load">📂 Load a saved tracker</button>' : '') +
+        '</div>';
+    } else if (tw.screen === 'templatePick'){
+      var cats = ['All'].concat(uniqueTemplateCategories());
+      html += '<h3 class="wizard-q">Choose a template</h3>';
+      html += '<div class="category-chips">';
+      cats.forEach(function(c){
+        html += '<button type="button" class="category-chip' + (tw.categoryFilter === c ? ' active' : '') + '" data-tracker-category-filter="' + esc(c) + '">' + esc(c) + '</button>';
+      });
+      html += '</div>';
+      var tplMatches = STATE.templates.filter(function(t){ return tw.categoryFilter === 'All' || t.category === tw.categoryFilter; });
+      html += '<div class="wizard-options wizard-options-list">';
+      if (!tplMatches.length){
+        html += '<div class="wizard-hint">No templates in this category yet.</div>';
+      }
+      tplMatches.forEach(function(t){
+        html += '<button type="button" class="wizard-opt" data-tracker-pick-template="' + t.id + '">' + esc(t.name) +
+          ' <span style="color:var(--text-muted); font-weight:400;">(' + esc(t.category) + ' · ' + t.items.length + ' goal' + (t.items.length===1?'':'s') + (t.isPublic ? ' · 🌐 Public' : '') + ')</span></button>';
+      });
+      html += '</div>';
+    } else if (tw.screen === 'loadPick'){
+      var matches = STATE.trackerLibrary.filter(function(t){ return t.scope === tw.scope; });
+      html += '<h3 class="wizard-q">Which saved tracker?</h3>';
+      html += '<div class="wizard-options wizard-options-list">';
+      matches.forEach(function(t){
+        html += '<button type="button" class="wizard-opt" data-tracker-pick-library="' + t.id + '">' + esc(t.name) +
+          ' <span style="color:var(--text-muted); font-weight:400;">(' + t.habitIds.length + ' goal' + (t.habitIds.length===1?'':'s') + ')</span></button>';
+      });
+      html += '</div>';
+    } else if (tw.screen === 'saveName'){
+      html += '<h3 class="wizard-q">Save your current goals first</h3>';
+      html += '<p class="wizard-hint" style="margin-bottom:12px;">Give this setup a name so you can switch back to it later.</p>';
+      html += '<input type="text" class="wizard-input" id="tracker-save-name" maxlength="40" value="' + esc(tw.saveName) + '" placeholder="e.g. My usual goals">';
+      html += '<button type="button" class="wizard-submit" data-tracker-continue-savename>Save &amp; continue</button>';
+    } else if (tw.screen === 'confirm'){
+      var scopeLabel = tw.scope === 'both' ? 'both of you' : ((personByKey(STATE, tw.scope) || {}).name || tw.scope);
+      var summary = '';
+      if (tw.kind === 'hard75') summary = 'This sets up the <b>75 Hard</b> template for ' + esc(scopeLabel) + '.';
+      else if (tw.kind === 'customTemplate'){
+        var pickedTpl = STATE.templates.find(function(t){ return t.id === tw.templateId; });
+        summary = 'This sets up the <b>' + esc(pickedTpl ? pickedTpl.name : 'template') + '</b> template for ' + esc(scopeLabel) + '.';
+      }
+      else if (tw.kind === 'custom') summary = 'This clears the slate for ' + esc(scopeLabel) + ' so you can build your own goals from scratch.';
+      else if (tw.kind === 'load'){
+        var entry = STATE.trackerLibrary.find(function(t){ return t.id === tw.libraryEntryId; });
+        summary = 'This loads <b>' + esc(entry ? entry.name : 'the saved tracker') + '</b> for ' + esc(scopeLabel) + '.';
+      }
+      if (habitsForScope(STATE, tw.scope).length){
+        summary += ' Your current goals will be saved as “' + esc(tw.saveName || 'My goals') + '” so you can switch back anytime.';
+      }
+      html += '<h3 class="wizard-q">Ready to apply?</h3>';
+      html += '<p class="wizard-summary">' + summary + '</p>';
+      html += '<button type="button" class="wizard-submit" data-tracker-submit>Confirm &amp; apply</button>';
+    }
+
+    html += '</div></div>';
+    return html;
+  }
+
+  function renderSaveTemplateModal(){
+    var m = templateSaveModal;
+    var person = personByKey(STATE, m.scope);
+    var scopeLabel = person ? person.name : m.scope;
+    var html = '<div class="wizard-overlay" data-template-modal-overlay>';
+    html += '<div class="wizard-box">';
+    html += '<button type="button" class="wizard-close" data-template-modal-close title="Cancel">✕</button>';
+    html += '<div class="wizard-progress">Save as template</div>';
+    html += '<h3 class="wizard-q">Save ' + esc(scopeLabel) + '’s current goals as a template</h3>';
+    html += '<p class="wizard-hint" style="margin-bottom:14px;">Turns what you’re doing now into a reusable template either of you can apply again later.</p>';
+    html += '<label class="add-label" style="display:block; margin-bottom:6px;">Name</label>';
+    html += '<input type="text" class="wizard-input" id="template-name-input" maxlength="40" value="' + esc(m.name) + '" placeholder="e.g. My Morning Routine">';
+    html += '<label class="add-label" style="display:block; margin-bottom:6px;">Category</label>';
+    html += '<div class="category-chips">';
+    CATEGORY_SUGGESTIONS.forEach(function(c){
+      html += '<button type="button" class="category-chip' + (m.category === c ? ' active' : '') + '" data-template-category-chip="' + esc(c) + '">' + esc(c) + '</button>';
+    });
+    html += '</div>';
+    html += '<input type="text" class="wizard-input" id="template-category-input" maxlength="30" value="' + esc(m.category) + '" placeholder="Or type your own category">';
+    html += '<button type="button" class="toggle-pill' + (m.isPublic ? ' on' : '') + '" data-template-toggle-public>' +
+      '<span>' + (m.isPublic ? '🌐 Public (coming soon)' : '🔒 Private — just for you two') + '</span><span class="switch"></span></button>';
+    html += '<button type="button" class="wizard-submit" data-template-save-submit>Save template</button>';
+    html += '</div></div>';
+    return html;
+  }
+
+  // ==========================================================================
+  // Rendering: My Trackers (saved tracker library — load, rename, delete)
+  // ==========================================================================
+  function renderTrackersPage(){
+    var app = document.getElementById('app');
+    var html = '';
+    html += '<button type="button" class="back-link" data-go-home>&larr; Back</button>';
+    html += '<div class="eyebrow">Saved setups</div>';
+    html += '<h1>My trackers</h1>';
+    html += '<p class="sub">Switch between saved goal setups — like different challenges you\'ve tried.</p>';
+
+    html += '<div class="card">';
+    if (!STATE.trackerLibrary.length){
+      html += '<div class="empty">No saved trackers yet. When you switch templates from a profile page, your current goals get saved here automatically so you can come back to them.</div>';
+    } else {
+      STATE.trackerLibrary.slice().reverse().forEach(function(t){
+        var scopeLabel = t.scope === 'both' ? 'Both of you' : ((personByKey(STATE, t.scope) || {}).name || t.scope);
+        var activeCount = t.habitIds.filter(function(id){
+          var h = STATE.habits.find(function(hh){ return hh.id === id; });
+          return h && !h.archived;
+        }).length;
+        var isFullyActive = t.habitIds.length > 0 && activeCount === t.habitIds.length;
+        html += '<div class="tracker-row"><div class="tracker-info">';
+        if (renamingTrackerId === t.id){
+          html += '<input type="text" class="wizard-input" style="margin-bottom:0;" data-tracker-rename-input="' + t.id + '" value="' + esc(t.name) + '" maxlength="40">';
+        } else {
+          html += '<div class="tracker-name">' + esc(t.name) + '</div>';
+        }
+        html += '<div class="tracker-meta">' + esc(scopeLabel) + ' · ' + t.habitIds.length + ' goal' + (t.habitIds.length===1?'':'s') +
+          ' · saved ' + esc(shortDate(t.savedAt)) + (isFullyActive ? ' · active now' : '') + '</div>';
+        html += '</div><div class="tracker-actions">';
+        if (!isFullyActive){
+          html += '<button type="button" class="tracker-btn" data-load-tracker="' + t.id + '">Load</button>';
+        }
+        html += '<button type="button" class="tracker-btn" data-rename-tracker="' + t.id + '">Rename</button>';
+        html += '<button type="button" class="tracker-btn danger" data-delete-tracker="' + t.id + '">Delete</button>';
+        html += '</div></div>';
+      });
+    }
+    html += '</div>';
+
+    html += '<div class="card">';
+    html += '<div class="section-title">My Templates</div>';
+    if (!STATE.templates.length){
+      html += '<div class="empty">No templates saved yet. Use “Save as template” on a profile page to turn your current goals into a reusable, categorized template.</div>';
+    } else {
+      STATE.templates.slice().reverse().forEach(function(t){
+        html += '<div class="tracker-row"><div class="tracker-info">';
+        if (renamingTemplateId === t.id){
+          html += '<input type="text" class="wizard-input" style="margin-bottom:6px;" data-template-rename-input="' + t.id + '" value="' + esc(t.name) + '" maxlength="40">';
+        } else {
+          html += '<div class="tracker-name">' + esc(t.name) + (t.isPublic ? ' <span style="color:var(--text-muted); font-weight:400; font-size:11px;">🌐 Public</span>' : '') + '</div>';
+        }
+        html += '<div class="tracker-meta">';
+        if (editingTemplateCategoryId === t.id){
+          html += '<input type="text" class="wizard-input" style="margin:4px 0 0; max-width:200px; display:inline-block;" data-template-category-input-inline="' + t.id + '" value="' + esc(t.category) + '" maxlength="30">';
+        } else {
+          html += esc(t.category);
+        }
+        html += ' · ' + t.items.length + ' goal' + (t.items.length===1?'':'s') + '</div>';
+        html += '</div><div class="tracker-actions">' +
+          '<button type="button" class="tracker-btn" data-apply-template="' + t.id + '">Apply</button>' +
+          '<button type="button" class="tracker-btn" data-rename-template="' + t.id + '">Rename</button>' +
+          '<button type="button" class="tracker-btn" data-recategorize-template="' + t.id + '">Category</button>' +
+          '<button type="button" class="tracker-btn" data-toggle-template-public="' + t.id + '">' + (t.isPublic ? 'Make private' : 'Make public') + '</button>' +
+          '<button type="button" class="tracker-btn danger" data-delete-template="' + t.id + '">Delete</button>' +
+          '</div></div>';
+      });
+    }
+    html += '</div>';
+
+    html += '<footer><span class="status-dot" id="status-dot"></span><span id="status-label">Ready</span>' +
+      '<span style="flex:1"></span>' +
+      '<button type="button" class="settings-link" data-open-tracker-wizard>Set up tracker</button>' +
+      '<button type="button" class="settings-link" id="settings-link">Settings</button></footer>';
+
+    if (confirmDeleteTrackerId){
+      var pendingT = STATE.trackerLibrary.find(function(t){ return t.id === confirmDeleteTrackerId; });
+      if (pendingT){
+        html += '<div class="confirm-overlay" data-tracker-delete-overlay>' +
+          '<div class="confirm-box">' +
+          '<p class="confirm-text">Delete <b>' + esc(pendingT.name) + '</b>? This removes its saved goals for good.</p>' +
+          '<div class="confirm-actions">' +
+          '<button type="button" class="confirm-cancel" data-tracker-delete-cancel>Cancel</button>' +
+          '<button type="button" class="confirm-remove" data-tracker-delete-confirm>Delete</button>' +
+          '</div></div></div>';
+      } else {
+        confirmDeleteTrackerId = null;
+      }
+    }
+
+    if (confirmDeleteTemplateId){
+      var pendingTpl = STATE.templates.find(function(t){ return t.id === confirmDeleteTemplateId; });
+      if (pendingTpl){
+        html += '<div class="confirm-overlay" data-template-delete-overlay>' +
+          '<div class="confirm-box">' +
+          '<p class="confirm-text">Delete the <b>' + esc(pendingTpl.name) + '</b> template for good?</p>' +
+          '<div class="confirm-actions">' +
+          '<button type="button" class="confirm-cancel" data-template-delete-cancel>Cancel</button>' +
+          '<button type="button" class="confirm-remove" data-template-delete-confirm>Delete</button>' +
+          '</div></div></div>';
+      } else {
+        confirmDeleteTemplateId = null;
+      }
+    }
+
+    if (trackerWizard) html += renderTrackerWizard();
+
+    app.innerHTML = html;
+    setStatus(status);
+    wireEvents();
+  }
+
   function renderTile(h, personKey, bucketKey, mode){
     var c = getCell(STATE, bucketKey, h.id, personKey);
     var noteKey = h.id + ':' + personKey;
@@ -1247,6 +1910,7 @@
     var app = document.getElementById('app');
     if (!app || !STATE) return;
     if (VIEW.screen === 'person' && VIEW.personKey) renderPersonPage(VIEW.personKey);
+    else if (VIEW.screen === 'trackers') renderTrackersPage();
     else renderHome();
   }
 
@@ -1369,6 +2033,120 @@
     });
     var wizardSubmitBtn = app.querySelector('[data-wizard-submit]');
     if (wizardSubmitBtn) wizardSubmitBtn.addEventListener('click', wizardSubmit);
+
+    // Tracker (account) setup wizard triggers + controls
+    app.querySelectorAll('[data-open-tracker-wizard]').forEach(function(btn){
+      btn.addEventListener('click', openTrackerWizard);
+    });
+    var goTrackersBtn = app.querySelector('[data-go-trackers]');
+    if (goTrackersBtn) goTrackersBtn.addEventListener('click', goTrackers);
+
+    var twOverlay = app.querySelector('[data-tracker-wizard-overlay]');
+    if (twOverlay) twOverlay.addEventListener('click', function(e){ if (e.target === twOverlay) closeTrackerWizard(); });
+    var twCloseBtn = app.querySelector('[data-tracker-wizard-close]');
+    if (twCloseBtn) twCloseBtn.addEventListener('click', closeTrackerWizard);
+    var twBackBtn = app.querySelector('[data-tracker-wizard-back]');
+    if (twBackBtn) twBackBtn.addEventListener('click', trackerWizardBack);
+    app.querySelectorAll('[data-tracker-scope]').forEach(function(btn){
+      btn.addEventListener('click', function(){ trackerWizardChooseScope(btn.getAttribute('data-tracker-scope')); });
+    });
+    app.querySelectorAll('[data-tracker-kind]').forEach(function(btn){
+      btn.addEventListener('click', function(){ trackerWizardChooseKind(btn.getAttribute('data-tracker-kind')); });
+    });
+    app.querySelectorAll('[data-tracker-pick-library]').forEach(function(btn){
+      btn.addEventListener('click', function(){ trackerWizardPickLibrary(btn.getAttribute('data-tracker-pick-library')); });
+    });
+    app.querySelectorAll('[data-tracker-category-filter]').forEach(function(btn){
+      btn.addEventListener('click', function(){ trackerWizardSetCategoryFilter(btn.getAttribute('data-tracker-category-filter')); });
+    });
+    app.querySelectorAll('[data-tracker-pick-template]').forEach(function(btn){
+      btn.addEventListener('click', function(){ trackerWizardPickTemplate(btn.getAttribute('data-tracker-pick-template')); });
+    });
+    var twSaveNameInput = document.getElementById('tracker-save-name');
+    var twContinueBtn = app.querySelector('[data-tracker-continue-savename]');
+    if (twContinueBtn && twSaveNameInput){
+      twContinueBtn.addEventListener('click', function(){
+        trackerWizardSetSaveName(twSaveNameInput.value);
+        trackerWizardContinueFromSaveName();
+      });
+      twSaveNameInput.addEventListener('keydown', function(e){ if (e.key === 'Enter') twContinueBtn.click(); });
+    }
+    var twSubmitBtn = app.querySelector('[data-tracker-submit]');
+    if (twSubmitBtn) twSubmitBtn.addEventListener('click', trackerWizardSubmit);
+
+    // My Trackers screen: load / rename / delete a saved tracker
+    app.querySelectorAll('[data-load-tracker]').forEach(function(btn){
+      btn.addEventListener('click', function(){ startLoadFromLibrary(btn.getAttribute('data-load-tracker')); });
+    });
+    app.querySelectorAll('[data-rename-tracker]').forEach(function(btn){
+      btn.addEventListener('click', function(){ renamingTrackerId = btn.getAttribute('data-rename-tracker'); render(); });
+    });
+    app.querySelectorAll('[data-tracker-rename-input]').forEach(function(input){
+      function commitRename(){ renameTracker(input.getAttribute('data-tracker-rename-input'), input.value); renamingTrackerId = null; }
+      input.addEventListener('blur', commitRename);
+      input.addEventListener('keydown', function(e){ if (e.key === 'Enter') input.blur(); });
+    });
+    app.querySelectorAll('[data-delete-tracker]').forEach(function(btn){
+      btn.addEventListener('click', function(){ requestDeleteTracker(btn.getAttribute('data-delete-tracker')); });
+    });
+    var tdOverlay = app.querySelector('[data-tracker-delete-overlay]');
+    if (tdOverlay) tdOverlay.addEventListener('click', function(e){ if (e.target === tdOverlay) cancelDeleteTracker(); });
+    var tdCancelBtn = app.querySelector('[data-tracker-delete-cancel]');
+    if (tdCancelBtn) tdCancelBtn.addEventListener('click', cancelDeleteTracker);
+    var tdConfirmBtn = app.querySelector('[data-tracker-delete-confirm]');
+    if (tdConfirmBtn) tdConfirmBtn.addEventListener('click', confirmDeleteTracker);
+
+    // Save-as-template trigger + modal
+    var saveTemplateBtn = app.querySelector('[data-save-as-template]');
+    if (saveTemplateBtn) saveTemplateBtn.addEventListener('click', function(){ openSaveTemplateModal(VIEW.personKey); });
+    var tmOverlay = app.querySelector('[data-template-modal-overlay]');
+    if (tmOverlay) tmOverlay.addEventListener('click', function(e){ if (e.target === tmOverlay) closeSaveTemplateModal(); });
+    var tmCloseBtn = app.querySelector('[data-template-modal-close]');
+    if (tmCloseBtn) tmCloseBtn.addEventListener('click', closeSaveTemplateModal);
+    var tmNameInput = document.getElementById('template-name-input');
+    if (tmNameInput) tmNameInput.addEventListener('input', function(){ saveTemplateModalSetName(tmNameInput.value); });
+    var tmCategoryInput = document.getElementById('template-category-input');
+    if (tmCategoryInput) tmCategoryInput.addEventListener('input', function(){ saveTemplateModalSetCategory(tmCategoryInput.value); });
+    app.querySelectorAll('[data-template-category-chip]').forEach(function(btn){
+      btn.addEventListener('click', function(){ saveTemplateModalSetCategory(btn.getAttribute('data-template-category-chip')); render(); });
+    });
+    var tmPublicToggle = app.querySelector('[data-template-toggle-public]');
+    if (tmPublicToggle) tmPublicToggle.addEventListener('click', saveTemplateModalTogglePublic);
+    var tmSaveBtn = app.querySelector('[data-template-save-submit]');
+    if (tmSaveBtn) tmSaveBtn.addEventListener('click', submitSaveTemplateModal);
+
+    // My Trackers screen: apply / rename / recategorize / publicize / delete a template
+    app.querySelectorAll('[data-apply-template]').forEach(function(btn){
+      btn.addEventListener('click', function(){ startApplyTemplate(btn.getAttribute('data-apply-template')); });
+    });
+    app.querySelectorAll('[data-rename-template]').forEach(function(btn){
+      btn.addEventListener('click', function(){ renamingTemplateId = btn.getAttribute('data-rename-template'); render(); });
+    });
+    app.querySelectorAll('[data-template-rename-input]').forEach(function(input){
+      function commitTemplateRename(){ renameTemplate(input.getAttribute('data-template-rename-input'), input.value); renamingTemplateId = null; }
+      input.addEventListener('blur', commitTemplateRename);
+      input.addEventListener('keydown', function(e){ if (e.key === 'Enter') input.blur(); });
+    });
+    app.querySelectorAll('[data-recategorize-template]').forEach(function(btn){
+      btn.addEventListener('click', function(){ editingTemplateCategoryId = btn.getAttribute('data-recategorize-template'); render(); });
+    });
+    app.querySelectorAll('[data-template-category-input-inline]').forEach(function(input){
+      function commitTemplateCategory(){ recategorizeTemplate(input.getAttribute('data-template-category-input-inline'), input.value); editingTemplateCategoryId = null; }
+      input.addEventListener('blur', commitTemplateCategory);
+      input.addEventListener('keydown', function(e){ if (e.key === 'Enter') input.blur(); });
+    });
+    app.querySelectorAll('[data-toggle-template-public]').forEach(function(btn){
+      btn.addEventListener('click', function(){ toggleTemplatePublic(btn.getAttribute('data-toggle-template-public')); });
+    });
+    app.querySelectorAll('[data-delete-template]').forEach(function(btn){
+      btn.addEventListener('click', function(){ requestDeleteTemplate(btn.getAttribute('data-delete-template')); });
+    });
+    var tmpDeleteOverlay = app.querySelector('[data-template-delete-overlay]');
+    if (tmpDeleteOverlay) tmpDeleteOverlay.addEventListener('click', function(e){ if (e.target === tmpDeleteOverlay) cancelDeleteTemplate(); });
+    var tmpDeleteCancelBtn = app.querySelector('[data-template-delete-cancel]');
+    if (tmpDeleteCancelBtn) tmpDeleteCancelBtn.addEventListener('click', cancelDeleteTemplate);
+    var tmpDeleteConfirmBtn = app.querySelector('[data-template-delete-confirm]');
+    if (tmpDeleteConfirmBtn) tmpDeleteConfirmBtn.addEventListener('click', confirmDeleteTemplate);
 
     app.querySelectorAll('[data-note-toggle]').forEach(function(btn){
       btn.addEventListener('mousedown', function(e){ e.preventDefault(); });
@@ -1496,7 +2274,11 @@
     document.addEventListener('keydown', function(e){
       if (e.key !== 'Escape') return;
       if (confirmRemoveId) cancelRemove();
+      else if (confirmDeleteTrackerId) cancelDeleteTracker();
+      else if (confirmDeleteTemplateId) cancelDeleteTemplate();
       else if (wizard) closeWizard();
+      else if (trackerWizard) closeTrackerWizard();
+      else if (templateSaveModal) closeSaveTemplateModal();
     });
   }
 
