@@ -793,7 +793,12 @@
   function binUrl(){ return 'https://api.jsonbin.io/v3/b/' + CONFIG.binId; }
 
   async function fetchRemote(){
+    // cache: 'no-store' forces an actual network round-trip. Without it, a
+    // phone's browser can serve a stale cached copy of this exact GET
+    // indefinitely — looking exactly like "I'm not getting their updates"
+    // even though the shared record is fine.
     var res = await fetch(binUrl() + '/latest', {
+      cache: 'no-store',
       headers: { 'X-Master-Key': CONFIG.apiKey, 'X-Bin-Meta': 'false' }
     });
     if (!res.ok){ var err = new Error('http_' + res.status); err.status = res.status; throw err; }
@@ -2289,6 +2294,20 @@
       } else {
         stopPolling();
       }
+    });
+    // Belt-and-suspenders for mobile: some mobile browsers/PWA wrappers are
+    // unreliable about firing visibilitychange when a backgrounded tab is
+    // brought back, which would otherwise leave this device polling-dead
+    // and stuck showing whatever it last had — exactly like "not getting
+    // their updates." 'focus' and 'pageshow' (the latter also covers
+    // back-forward-cache restores) catch the cases visibilitychange misses.
+    window.addEventListener('focus', function(){
+      refreshFromRemote(false);
+      startPolling();
+    });
+    window.addEventListener('pageshow', function(){
+      refreshFromRemote(false);
+      startPolling();
     });
     document.addEventListener('keydown', function(e){
       if (e.key !== 'Escape') return;
