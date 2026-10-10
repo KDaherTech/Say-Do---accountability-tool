@@ -20,6 +20,9 @@
     --border:#DBE1E7; --accent-am:#C97F2E; --accent-pm:#6A5ACD;
     --accent-am-soft:#F3E3CD; --accent-pm-soft:#E4E1F8;
     --done:#3F9670; --done-soft:#DCEEE5; --danger:#B14A3E; --danger-soft:#F5DEDC; --ring:#8891A0;
+    --tile-shadow:0 1px 0 rgba(255,255,255,.7) inset, 0 16px 30px -14px rgba(30,36,48,.24), 0 2px 5px rgba(30,36,48,.1);
+    --tile-shadow-hover:0 1px 0 rgba(255,255,255,.7) inset, 0 20px 36px -14px rgba(30,36,48,.3), 0 3px 6px rgba(30,36,48,.12);
+    --avatar-ring:#FFFFFF;
   }
   @media (prefers-color-scheme: dark){
     :root:not([data-theme="light"]){
@@ -27,6 +30,9 @@
       --border:#2B3244; --accent-am:#E7A54B; --accent-pm:#9C90EA;
       --accent-am-soft:#3B2C16; --accent-pm-soft:#2A2650;
       --done:#57B58C; --done-soft:#163A2C; --danger:#DD8B7E; --danger-soft:#3B211E; --ring:#5B6472;
+      --tile-shadow:0 1px 0 rgba(255,255,255,.05) inset, 0 16px 30px -14px rgba(0,0,0,.6), 0 2px 5px rgba(0,0,0,.35);
+      --tile-shadow-hover:0 1px 0 rgba(255,255,255,.06) inset, 0 20px 36px -14px rgba(0,0,0,.7), 0 3px 6px rgba(0,0,0,.4);
+      --avatar-ring:#171C2A;
     }
   }
   :root[data-theme="dark"]{
@@ -34,6 +40,9 @@
     --border:#2B3244; --accent-am:#E7A54B; --accent-pm:#9C90EA;
     --accent-am-soft:#3B2C16; --accent-pm-soft:#2A2650;
     --done:#57B58C; --done-soft:#163A2C; --danger:#DD8B7E; --danger-soft:#3B211E; --ring:#5B6472;
+    --tile-shadow:0 1px 0 rgba(255,255,255,.05) inset, 0 16px 30px -14px rgba(0,0,0,.6), 0 2px 5px rgba(0,0,0,.35);
+    --tile-shadow-hover:0 1px 0 rgba(255,255,255,.06) inset, 0 20px 36px -14px rgba(0,0,0,.7), 0 3px 6px rgba(0,0,0,.4);
+    --avatar-ring:#171C2A;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;background:var(--bg);}
@@ -129,7 +138,6 @@
     color:var(--text); width:100%; padding:2px 0;
   }
   .pane-header input:focus-visible{outline:2px solid var(--ring); outline-offset:2px; border-radius:4px;}
-  .person-dot{width:9px; height:9px; border-radius:50%; flex:0 0 auto;}
   .pane-subhead{
     font-family:'IBM Plex Mono',monospace; font-size:10px; text-transform:uppercase; letter-spacing:.06em;
     color:var(--text-muted); padding:12px 16px 4px;
@@ -207,22 +215,48 @@
   }
   .back-link:hover{color:var(--text);}
 
-  .home-tiles{display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:12px; margin-bottom:24px;}
+  .home-tiles{display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:18px; margin-bottom:24px;}
+  .profile-tile-wrap{position:relative;}
   .profile-tile{
-    background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:22px 20px;
-    cursor:pointer; text-align:left; display:flex; flex-direction:column; gap:10px; font-family:inherit;
-    transition:border-color .15s ease, transform .1s ease; -webkit-tap-highlight-color:transparent;
+    width:100%; background:var(--surface); border:1px solid var(--border); border-radius:26px; padding:20px 20px 22px;
+    padding-top:72px; cursor:pointer; text-align:left; display:flex; flex-direction:column; gap:10px; font-family:inherit;
+    transition:border-color .15s ease, transform .12s ease, box-shadow .15s ease; -webkit-tap-highlight-color:transparent;
+    box-shadow:var(--tile-shadow);
   }
-  .profile-tile:hover{border-color:var(--ring);}
-  .profile-tile:active{transform:scale(.98);}
+  .profile-tile:hover{border-color:var(--ring); transform:translateY(-2px); box-shadow:var(--tile-shadow-hover);}
+  .profile-tile:active{transform:scale(.98) translateY(0);}
   .profile-tile:focus-visible{outline:2px solid var(--ring); outline-offset:2px;}
-  .tile-dot{width:16px; height:16px; border-radius:50%;}
   .profile-tile h2{font-family:'Fraunces',Georgia,serif; font-size:23px; font-weight:600; margin:0;}
   .tile-meta{
     font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.05em;
   }
   .tile-stat-row{display:flex; gap:14px; margin-top:2px;}
   .tile-stat b{font-size:15px; font-variant-numeric:tabular-nums;}
+
+  /* Avatars: a generated colored-initial circle by default, or a custom
+     photo once someone uploads one. Used wherever a name appears. */
+  .avatar{
+    border-radius:50%; flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center;
+    overflow:hidden; font-family:'Fraunces',Georgia,serif; font-weight:600; color:#fff; line-height:1;
+    -webkit-user-select:none; user-select:none;
+  }
+  .avatar img{width:100%; height:100%; object-fit:cover; display:block;}
+  .tile-avatar-slot{
+    position:absolute; top:18px; left:20px; z-index:2;
+  }
+  .tile-avatar-slot .avatar{
+    width:56px; height:56px; font-size:23px; box-shadow:0 0 0 3px var(--avatar-ring), var(--tile-shadow);
+  }
+  .avatar-edit-btn{
+    position:absolute; right:-4px; bottom:-4px; width:24px; height:24px; border-radius:50%;
+    background:var(--surface); border:1px solid var(--border); display:flex; align-items:center; justify-content:center;
+    font-size:12px; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.18); line-height:1;
+  }
+  .avatar-edit-btn:hover{background:var(--surface-2);}
+  .avatar-edit-btn input{position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%;}
+  .avatar-sm{width:22px; height:22px; font-size:11px;}
+  .avatar-md{width:30px; height:30px; font-size:13px;}
+  .avatar-lg{width:36px; height:36px; font-size:15px; vertical-align:middle; margin-right:10px;}
 
   .leader-row{
     display:flex; align-items:center; justify-content:space-between; padding:12px 18px; border-top:1px solid var(--border);
@@ -245,6 +279,9 @@
   .insight-stats{display:flex; gap:18px; flex-wrap:wrap;}
   .stat-num{font-family:'IBM Plex Mono',monospace; font-size:19px; font-variant-numeric:tabular-nums;}
   .stat-label{font-size:10.5px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.05em; margin-top:1px;}
+  .push-notes{margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:8px;}
+  .push-notes li{font-size:13px; line-height:1.4; color:var(--text); padding-left:14px; position:relative;}
+  .push-notes li::before{content:'→'; position:absolute; left:0; color:var(--text-muted);}
 
   .date-nav{display:flex; align-items:center; justify-content:center; gap:10px; padding:2px 0 6px;}
   .date-nav-btn{
@@ -394,6 +431,58 @@
     return 'h_' + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
   }
 
+  // ==========================================================================
+  // Avatars: a generated colored-initial circle by default, swapped for a
+  // custom photo once someone uploads one. The photo itself (not just a
+  // reference to it) lives on the person object and travels through the same
+  // jsonbin sync as everything else, so it has to stay small — see
+  // readAvatarFile, which crops to a square and downsizes before it's ever
+  // stored.
+  // ==========================================================================
+  function initialFor(name){
+    var s = (name || '').trim();
+    return s ? s.charAt(0).toUpperCase() : '?';
+  }
+
+  function avatarHtml(person, accentVar, sizeClass){
+    var cls = 'avatar' + (sizeClass ? ' ' + sizeClass : '');
+    if (person && person.avatar){
+      return '<span class="' + cls + '"><img src="' + esc(person.avatar) + '" alt="" /></span>';
+    }
+    return '<span class="' + cls + '" style="background:var(' + accentVar + ')">' + esc(initialFor(person ? person.name : '')) + '</span>';
+  }
+
+  var AVATAR_SIZE = 160; // square px stored — small enough to not bloat the synced JSON
+  function readAvatarFile(file, cb){
+    if (!file || !/^image\//.test(file.type)){ cb(null); return; }
+    var reader = new FileReader();
+    reader.onload = function(){
+      var img = new Image();
+      img.onload = function(){
+        var side = Math.min(img.width, img.height);
+        var sx = (img.width - side) / 2, sy = (img.height - side) / 2;
+        var canvas = document.createElement('canvas');
+        canvas.width = AVATAR_SIZE; canvas.height = AVATAR_SIZE;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(img, sx, sy, side, side, 0, 0, AVATAR_SIZE, AVATAR_SIZE);
+        try{ cb(canvas.toDataURL('image/jpeg', 0.82)); }catch(e){ cb(null); }
+      };
+      img.onerror = function(){ cb(null); };
+      img.src = reader.result;
+    };
+    reader.onerror = function(){ cb(null); };
+    reader.readAsDataURL(file);
+  }
+
+  function setAvatar(personKey, dataUrl){
+    var p = personByKey(STATE, personKey);
+    if (!p) return;
+    if (dataUrl) p.avatar = dataUrl; else delete p.avatar;
+    queueOp('avatar|' + personKey, {type:'avatar', key:personKey, avatar: dataUrl || null});
+    render();
+    scheduleSave();
+  }
+
   function todayKey(d){
     d = d || new Date();
     var parts = new Intl.DateTimeFormat('en-CA', {timeZone:TZ, year:'numeric', month:'2-digit', day:'2-digit'}).formatToParts(d);
@@ -434,7 +523,18 @@
     return (h.weekendName && isWeekend(key)) ? h.weekendName : h.name;
   }
 
+  // A habit is never physically deleted anymore — "removing" a tile just
+  // stamps retiredAt with the date it stopped being active. Any bucket key
+  // (day, week-Monday, or 'YYYY-MM' month) from before that date still
+  // shows and counts the habit normally; today and everything after does
+  // not. This is what lets deleting a goal stop it going forward without
+  // erasing the tile or the points it already earned in the past.
+  function habitRetiredOnDate(h, dateKey){
+    return !!(h.retiredAt && dateKey >= h.retiredAt);
+  }
+
   function habitVisibleOnDate(h, dateKey){
+    if (habitRetiredOnDate(h, dateKey)) return false;
     if (h.cadence === 'weekday') return !isWeekend(dateKey);
     if (h.cadence === 'weekend') return isWeekend(dateKey);
     return true; // daily / undefined
@@ -456,16 +556,20 @@
 
   function monthKeyFor(key){ return key.slice(0, 7); } // 'YYYY-MM'
 
+  // These three are pure cadence buckets now — no retiredAt filtering here,
+  // since the right cutoff date depends on which day/week/month is being
+  // looked at. Callers combine the result with habitRetiredOnDate (directly,
+  // or via habitVisibleOnDate) against whichever date is actually in view.
   function dailyHabits(state){
-    return state.habits.filter(function(h){ return !h.archived && h.cadence !== 'weekly' && h.cadence !== 'monthly'; });
+    return state.habits.filter(function(h){ return h.cadence !== 'weekly' && h.cadence !== 'monthly'; });
   }
 
   function weeklyHabits(state){
-    return state.habits.filter(function(h){ return !h.archived && h.cadence === 'weekly'; });
+    return state.habits.filter(function(h){ return h.cadence === 'weekly'; });
   }
 
   function monthlyHabits(state){
-    return state.habits.filter(function(h){ return !h.archived && h.cadence === 'monthly'; });
+    return state.habits.filter(function(h){ return h.cadence === 'monthly'; });
   }
 
   function assigneePeople(state, h){
@@ -535,7 +639,7 @@
   function pointsForBucket(state, bucketKey, personKey, cadenceFilter){
     var pts = 0;
     state.habits.forEach(function(h){
-      if (h.archived) return;
+      if (habitRetiredOnDate(h, bucketKey)) return;
       if (!(h.assignee === 'both' || h.assignee === personKey)) return;
       var hc = h.cadence || 'daily';
       if (cadenceFilter && !cadenceFilter(hc)) return;
@@ -581,20 +685,169 @@
     return out;
   }
 
-  function computeStreakForPerson(state, personKey){
-    var hasHabits = habitsFor(dailyHabits(state), personKey).length > 0;
-    if (!hasHabits) return 0;
-    var streak = 0;
-    var key = addDaysToKey(todayKey(), -1);
-    var guard = 0;
-    while (guard < 400){
-      guard++;
-      var c = dayCompletionForPerson(state, key, personKey);
-      if (!c.engaged || c.done < c.total) break;
-      streak++;
-      key = addDaysToKey(key, -1);
+  // ==========================================================================
+  // Trend: a streak snaps to zero the moment one day is missed, which makes
+  // it brutally punishing and — per Khaled & Nat — just too hard to ever
+  // hold onto. A trend looks at the *shape* of recent days instead of
+  // demanding a perfect run: are you earning a bigger share of your
+  // possible points lately than you were a few days ago, about the same,
+  // or a smaller share? One off day no longer erases the picture.
+  //
+  // It's point-weighted (a 3-point goal moves it more than a 1-point goal —
+  // true to "based on points"), but normalized to a 0–1 share of points
+  // *possible* that day rather than a raw point total. Raw totals would
+  // read "trending up" just because a new goal was added yesterday, or
+  // "trending down" the day a goal is retired — neither is actually a
+  // change in how you're doing. Dividing by what was actually on offer
+  // that day cancels that out and leaves the real signal.
+  function pointShareForPersonDay(state, dateKey, personKey){
+    var earned = 0, possible = 0;
+    dailyHabits(state).forEach(function(h){
+      if (!(h.assignee === 'both' || h.assignee === personKey)) return;
+      if (!habitVisibleOnDate(h, dateKey)) return;
+      var c = getCell(state, dateKey, h.id, personKey);
+      if (!c.done && !c.missed) return; // not engaged that day — excluded, not counted as a zero
+      var pts = h.points || 1;
+      possible += pts;
+      if (c.done) earned += pts;
+    });
+    return possible ? (earned / possible) : null; // null = nothing to check off that day
+  }
+
+  var TREND_WINDOW_DAYS = 3;     // days per comparison window
+  var TREND_MARGIN = 0.12;       // ignore swings smaller than this — noise, not a trend
+  function computeTrendForPerson(state, personKey){
+    var recent = [], earlier = [];
+    for (var i = 1; i <= TREND_WINDOW_DAYS; i++){
+      var r = pointShareForPersonDay(state, addDaysToKey(todayKey(), -i), personKey);
+      if (r !== null) recent.push(r);
     }
-    return streak;
+    for (var j = TREND_WINDOW_DAYS + 1; j <= TREND_WINDOW_DAYS * 2; j++){
+      var e = pointShareForPersonDay(state, addDaysToKey(todayKey(), -j), personKey);
+      if (e !== null) earlier.push(e);
+    }
+    // Need real signal on both sides of the comparison, not one lucky/unlucky day.
+    if (recent.length < 2 || earlier.length < 2) return {dir:'new'};
+    var avg = function(arr){ return arr.reduce(function(a,b){ return a+b; }, 0) / arr.length; };
+    var recentAvg = avg(recent), earlierAvg = avg(earlier);
+    var delta = recentAvg - earlierAvg;
+    if (delta >= TREND_MARGIN) return {dir:'up', delta:delta};
+    if (delta <= -TREND_MARGIN) return {dir:'down', delta:delta};
+    return {dir:'flat', delta:delta};
+  }
+
+  var TREND_DISPLAY = {
+    up:   {icon:'📈', label:'Trending up'},
+    down: {icon:'📉', label:'Trending down'},
+    flat: {icon:'➡️', label:'Holding steady'},
+    new:  {icon:'🌱', label:'Just getting started'}
+  };
+  function trendDisplay(state, personKey){
+    return TREND_DISPLAY[computeTrendForPerson(state, personKey).dir];
+  }
+
+  // ==========================================================================
+  // Partner push: short, specific notes telling you how to nudge the OTHER
+  // person today — generated from their own data (trend, what's still open,
+  // what they've been skipping, how the week's going), not a generic
+  // reminder. Each signal below is a candidate note about `aboutKey`; they're
+  // checked in priority order (most actionable/urgent first) and the caller
+  // takes the top couple so the card stays genuinely short.
+  // ==========================================================================
+  function daysInMonth(monthKey){
+    var y = parseInt(monthKey.slice(0, 4), 10), m = parseInt(monthKey.slice(5, 7), 10);
+    return new Date(y, m, 0).getDate();
+  }
+
+  function pushNotesFor(state, aboutKey){
+    var who = personByKey(state, aboutKey);
+    if (!who) return [];
+    var other = state.people.find(function(p){ return p.key !== aboutKey; });
+    var today = todayKey();
+    var notes = []; // {priority, text} — lower priority number wins
+
+    // 1. A weekly goal that's still open with the week nearly over.
+    var wKey = weekKeyFor(today);
+    var weekOffset = DOW_ORDER.indexOf(dowLabel(today)); // Su=0..Sa=6
+    weekOffset = (weekOffset + 6) % 7; // days elapsed since Monday
+    if (weekOffset >= 4){
+      var openWeekly = habitsFor(weeklyHabits(state), aboutKey).filter(function(h){
+        if (habitRetiredOnDate(h, wKey)) return false;
+        return !getCell(state, wKey, h.id, aboutKey).done;
+      });
+      if (openWeekly.length){
+        notes.push({priority: 1, text: '"' + openWeekly[0].name + '" is still open for the week and there isn’t much runway left — today’s a good day to check in.'});
+      }
+    }
+
+    // 2. A monthly goal still open in the final stretch of the month.
+    var mKey = monthKeyFor(today);
+    var domToday = parseInt(today.slice(8, 10), 10);
+    if (daysInMonth(mKey) - domToday <= 5){
+      var openMonthly = habitsFor(monthlyHabits(state), aboutKey).filter(function(h){
+        if (habitRetiredOnDate(h, mKey)) return false;
+        return !getCell(state, mKey, h.id, aboutKey).done;
+      });
+      if (openMonthly.length){
+        notes.push({priority: 1, text: '"' + openMonthly[0].name + '" is still open with the month almost done.'});
+      }
+    }
+
+    // 3. Trending down over the last few days — the most general "needs a
+    // check-in" signal, so it only fires when nothing more specific did.
+    if (computeTrendForPerson(state, aboutKey).dir === 'down'){
+      notes.push({priority: 2, text: who.name + '’s had a quieter few days than usual — a check-in (not a scoreboard) is probably more useful than a nudge right now.'});
+    }
+
+    // 4. The single daily goal they've skipped most in the last 7 days.
+    var worstHabit = null, worstMisses = 0;
+    habitsFor(dailyHabits(state), aboutKey).forEach(function(h){
+      var misses = 0;
+      for (var dback = 1; dback <= 7; dback++){ // the 7 days strictly before today
+        var k = addDaysToKey(today, -dback);
+        if (!habitVisibleOnDate(h, k)) continue;
+        if (habitRetiredOnDate(h, k)) continue;
+        // Not-done counts as a miss here even without an explicit ✕ — unlike
+        // the trend above, the point of this specific signal is to surface
+        // exactly what's been left unchecked, logged or not.
+        if (!getCell(state, k, h.id, aboutKey).done) misses++;
+      }
+      if (misses > worstMisses){ worstMisses = misses; worstHabit = h; }
+    });
+    if (worstHabit && worstMisses >= 3){
+      notes.push({priority: 2, text: '"' + worstHabit.name + '" has slipped ' + worstMisses + ' of the last 7 days — worth asking what’s getting in the way, specifically for this one.'});
+    }
+
+    // 5. Today's goals not checked off yet (only once the day's well along
+    // isn't knowable without a clock, so just flag that there's open work).
+    var openToday = habitsFor(dailyHabits(state), aboutKey).filter(function(h){
+      return habitVisibleOnDate(h, today) && !habitRetiredOnDate(h, today) && !getCell(state, today, h.id, aboutKey).done;
+    });
+    if (openToday.length){
+      notes.push({priority: 3, text: openToday.length + ' of today’s goals ' + (openToday.length === 1 ? 'is' : 'are') + ' still unchecked — a reminder now beats one tonight.'});
+    }
+
+    // 6. Trailing on the week's leaderboard by a real margin.
+    if (other){
+      var wk = weekKeyFor(today);
+      var aboutWeekPts = pointsForKeys(state, aboutKey, lastNKeys(7)) + weeklyBonusPoints(state, wk, aboutKey) + monthlyBonusPoints(state, monthKeyFor(today), aboutKey);
+      var otherWeekPts = pointsForKeys(state, other.key, lastNKeys(7)) + weeklyBonusPoints(state, wk, other.key) + monthlyBonusPoints(state, monthKeyFor(today), other.key);
+      var gap = otherWeekPts - aboutWeekPts;
+      if (gap >= 5){
+        notes.push({priority: 4, text: who.name + '’s trailing by ' + gap + ' points this week — a little encouragement could close that up.'});
+      }
+    }
+
+    // 7. Positive reinforcement — trending up deserves a note too; "push"
+    // cuts both ways, and momentum is easier to keep than to restart.
+    if (computeTrendForPerson(state, aboutKey).dir === 'up'){
+      notes.push({priority: 5, text: who.name + '’s trending up lately — telling them you’ve noticed is worth more than any reminder.'});
+    }
+
+    notes.sort(function(a, b){ return a.priority - b.priority; });
+    var out = notes.slice(0, 2).map(function(n){ return n.text; });
+    if (!out.length) out.push(who.name + '’s steady right now — nothing urgent. Keep cheering each other on.');
+    return out;
   }
 
   function weekCompletionPctForPerson(state, personKey){
@@ -614,22 +867,28 @@
   }
 
   function personHasNoGoals(state, key){
-    return habitsFor(dailyHabits(state), key).length === 0 &&
-      habitsFor(weeklyHabits(state), key).length === 0 &&
-      habitsFor(monthlyHabits(state), key).length === 0;
+    var today = todayKey();
+    function activeToday(list){
+      return habitsFor(list, key).filter(function(h){ return !habitRetiredOnDate(h, today); });
+    }
+    return activeToday(dailyHabits(state)).length === 0 &&
+      activeToday(weeklyHabits(state)).length === 0 &&
+      activeToday(monthlyHabits(state)).length === 0;
   }
 
-  // The set of currently-active (non-archived) habits a tracker-setup scope
-  // "owns". A single-person scope only owns that person's own habits — shared
-  // 'both' habits are left alone unless the household ('both') scope is
-  // chosen, which is a full reset covering everyone's goals at once.
+  // The set of currently-active (not retired as of today) habits a
+  // tracker-setup scope "owns". A single-person scope only owns that
+  // person's own habits — shared 'both' habits are left alone unless the
+  // household ('both') scope is chosen, which is a full reset covering
+  // everyone's goals at once.
   function habitsForScope(state, scope){
+    var today = todayKey();
     if (scope === 'both'){
       return state.habits.filter(function(h){
-        return !h.archived && (h.assignee === 'p1' || h.assignee === 'p2' || h.assignee === 'both');
+        return !habitRetiredOnDate(h, today) && (h.assignee === 'p1' || h.assignee === 'p2' || h.assignee === 'both');
       });
     }
-    return state.habits.filter(function(h){ return !h.archived && h.assignee === scope; });
+    return state.habits.filter(function(h){ return !habitRetiredOnDate(h, today) && h.assignee === scope; });
   }
 
   // STATE is declared later in this file with `var`, so it's hoisted and
@@ -744,21 +1003,29 @@
         var cell2 = ensureCell(state, op.dateKey, op.habitId, op.personKey);
         cell2.note = (op.text || '').slice(0, 500);
       } else if (op.type === 'remove'){
-        state.habits = state.habits.filter(function(h){ return h.id !== op.habitId; });
+        // Soft-delete: stamp the retirement date rather than splicing the
+        // habit out, so past tiles/points stay intact. op.retiredAt is
+        // absent on pending ops queued before this version — todayKey() is
+        // a reasonable fallback for those.
+        var rh2 = state.habits.find(function(h){ return h.id === op.habitId; });
+        if (rh2) rh2.retiredAt = op.retiredAt || todayKey();
       } else if (op.type === 'add'){
         if (!state.habits.some(function(h){ return h.id === op.habit.id; })) state.habits.push(op.habit);
       } else if (op.type === 'rename'){
         var p = state.people.find(function(pp){ return pp.key === op.key; });
         if (p) p.name = op.name;
+      } else if (op.type === 'avatar'){
+        var pav = state.people.find(function(pp){ return pp.key === op.key; });
+        if (pav){ if (op.avatar) pav.avatar = op.avatar; else delete pav.avatar; }
       } else if (op.type === 'reorder'){
         ensureOrder(state);
         if (state.order[op.personKey]) state.order[op.personKey][op.group] = op.order;
       } else if (op.type === 'archive'){
         var ah = state.habits.find(function(h){ return h.id === op.habitId; });
-        if (ah) ah.archived = true;
+        if (ah) ah.retiredAt = op.retiredAt || todayKey();
       } else if (op.type === 'unarchive'){
         var uh = state.habits.find(function(h){ return h.id === op.habitId; });
-        if (uh) uh.archived = false;
+        if (uh) delete uh.retiredAt;
       } else if (op.type === 'addTracker'){
         if (!state.trackerLibrary) state.trackerLibrary = [];
         if (!state.trackerLibrary.some(function(t){ return t.id === op.entry.id; })) state.trackerLibrary.push(op.entry);
@@ -1016,8 +1283,13 @@
   }
 
   function removeHabit(id){
-    STATE.habits = STATE.habits.filter(function(h){ return h.id !== id; });
-    queueOp('remove|' + id, {type:'remove', habitId:id});
+    // Retire, don't delete: the habit object and every past cell under it
+    // stay exactly as they were, so history and points up to today are
+    // unaffected. It just stops showing up / counting from today onward.
+    var h = STATE.habits.find(function(hh){ return hh.id === id; });
+    var retiredAt = todayKey();
+    if (h) h.retiredAt = retiredAt;
+    queueOp('remove|' + id, {type:'remove', habitId:id, retiredAt: retiredAt});
     render();
     scheduleSave();
   }
@@ -1236,9 +1508,10 @@
       var savedEntry = {id: genId(), name: name, scope: scope, savedAt: todayKey(), habitIds: current.map(function(h){ return h.id; })};
       STATE.trackerLibrary.push(savedEntry);
       queueOp('addTracker|' + savedEntry.id, {type:'addTracker', entry: savedEntry});
+      var retiredAt = todayKey();
       current.forEach(function(h){
-        h.archived = true;
-        queueOp('archive|' + h.id, {type:'archive', habitId: h.id});
+        h.retiredAt = retiredAt;
+        queueOp('archive|' + h.id, {type:'archive', habitId: h.id, retiredAt: retiredAt});
       });
     }
     if (kind === 'hard75'){
@@ -1263,7 +1536,7 @@
         entry.habitIds.forEach(function(id){
           var h = STATE.habits.find(function(hh){ return hh.id === id; });
           if (h){
-            h.archived = false;
+            delete h.retiredAt;
             queueOp('unarchive|' + h.id, {type:'unarchive', habitId: h.id});
           }
         });
@@ -1304,9 +1577,11 @@
   }
 
   function collectCurrentItems(scope){
+    var today = todayKey();
     var list = habitsFor(dailyHabits(STATE), scope)
       .concat(habitsFor(weeklyHabits(STATE), scope))
-      .concat(habitsFor(monthlyHabits(STATE), scope));
+      .concat(habitsFor(monthlyHabits(STATE), scope))
+      .filter(function(h){ return !habitRetiredOnDate(h, today); });
     return list.map(function(h){
       var item = {name: h.name, points: h.points || 1};
       if (h.cadence && h.cadence !== 'daily') item.cadence = h.cadence;
@@ -1394,16 +1669,9 @@
   function deleteTrackerLibraryEntry(id){
     var entry = STATE.trackerLibrary.find(function(t){ return t.id === id; });
     if (!entry) return;
-    var idsToRemove = entry.habitIds.filter(function(hid){
-      var h = STATE.habits.find(function(hh){ return hh.id === hid; });
-      return h && h.archived;
-    });
-    if (idsToRemove.length){
-      var removeSet = {};
-      idsToRemove.forEach(function(hid){ removeSet[hid] = true; });
-      STATE.habits = STATE.habits.filter(function(h){ return !removeSet[h.id]; });
-      idsToRemove.forEach(function(hid){ queueOp('remove|' + hid, {type:'remove', habitId:hid}); });
-    }
+    // Deleting a saved tracker config only removes that saved record — the
+    // habits it once pointed at (active or already retired) are never
+    // touched here, since habit history is never deleted, only retired.
     STATE.trackerLibrary = STATE.trackerLibrary.filter(function(t){ return t.id !== id; });
     queueOp('deleteTracker|' + id, {type:'deleteTracker', id:id});
     scheduleSave();
@@ -1425,14 +1693,20 @@
 
     html += '<div class="home-tiles">';
     [p1, p2].forEach(function(p){
-      var streakN = computeStreakForPerson(STATE, p.key);
+      var trend = trendDisplay(STATE, p.key);
       var todayPts = pointsForDay(STATE, tKey, p.key);
-      html += '<button type="button" class="profile-tile" data-enter-person="' + p.key + '">' +
-        '<span class="tile-dot" style="background:var(' + accentOf[p.key] + ')"></span>' +
+      html += '<div class="profile-tile-wrap">' +
+        '<button type="button" class="profile-tile" data-enter-person="' + p.key + '">' +
         '<h2>' + esc(p.name) + '</h2>' +
-        '<span class="tile-meta">' + (streakN > 0 ? '🔥 ' + streakN + '-day streak' : 'No streak yet') + '</span>' +
+        '<span class="tile-meta">' + trend.icon + ' ' + trend.label + '</span>' +
         '<div class="tile-stat-row"><div class="tile-stat"><b>' + todayPts + '</b> pt' + (todayPts===1?'':'s') + ' today</div></div>' +
-        '</button>';
+        '</button>' +
+        '<div class="tile-avatar-slot">' +
+        avatarHtml(p, accentOf[p.key], '') +
+        '<div class="avatar-edit-btn" title="Change ' + esc(p.name) + '’s photo">📷' +
+        '<input type="file" accept="image/*" data-avatar-upload="' + p.key + '"></div>' +
+        '</div>' +
+        '</div>';
     });
     html += '</div>';
 
@@ -1451,7 +1725,7 @@
       var tPts = idx === 0 ? todayPts1 : todayPts2;
       var aPts = idx === 0 ? allPts1 : allPts2;
       html += '<div class="leader-row">' +
-        '<div class="leader-who"><span class="person-dot" style="background:var(' + accentOf[p.key] + ')"></span>' +
+        '<div class="leader-who">' + avatarHtml(p, accentOf[p.key], 'avatar-md') +
         '<span class="leader-name">' + esc(p.name) + '</span>' +
         (weekLeader === p.key ? '<span class="leader-crown" title="Ahead this week">👑</span>' : '') +
         '</div>' +
@@ -1460,18 +1734,35 @@
     });
     html += '</div>';
 
+    // Partner push — short, specific notes on how to nudge the other person
+    // today, generated from their own recent data rather than a generic
+    // reminder. Both directions show at once since either of you might be
+    // the one looking at this screen.
+    html += '<div class="card">';
+    html += '<div class="section-title">Partner push</div>';
+    html += '<p class="sub" style="margin:-4px 0 14px;">Quick, specific ways to nudge each other today.</p>';
+    html += '<div class="insight-grid">';
+    [p1, p2].forEach(function(p){
+      var notes = pushNotesFor(STATE, p.key);
+      html += '<div class="insight-card">' +
+        '<div class="insight-name">' + avatarHtml(p, accentOf[p.key], 'avatar-sm') + 'Push ' + esc(p.name) + ' today</div>' +
+        '<ul class="push-notes">' + notes.map(function(n){ return '<li>' + esc(n) + '</li>'; }).join('') + '</ul>' +
+        '</div>';
+    });
+    html += '</div></div>';
+
     // Insights
     html += '<div class="card">';
     html += '<div class="section-title">This week</div>';
     html += '<div class="insight-grid">';
     [p1, p2].forEach(function(p){
       var pct = weekCompletionPctForPerson(STATE, p.key);
-      var streakN = computeStreakForPerson(STATE, p.key);
+      var trend = trendDisplay(STATE, p.key);
       html += '<div class="insight-card">' +
-        '<div class="insight-name"><span class="person-dot" style="background:var(' + accentOf[p.key] + ')"></span>' + esc(p.name) + '</div>' +
+        '<div class="insight-name">' + avatarHtml(p, accentOf[p.key], 'avatar-sm') + esc(p.name) + '</div>' +
         '<div class="insight-stats">' +
         '<div><div class="stat-num">' + (pct===null ? '—' : pct + '%') + '</div><div class="stat-label">Completed</div></div>' +
-        '<div><div class="stat-num">' + streakN + '</div><div class="stat-label">Day streak</div></div>' +
+        '<div><div class="stat-num">' + trend.icon + '</div><div class="stat-label">' + trend.label + '</div></div>' +
         '</div></div>';
     });
     html += '</div></div>';
@@ -1508,17 +1799,31 @@
 
     var mainList = habitsFor(dailyHabits(STATE), personKey).filter(function(h){ return habitVisibleOnDate(h, dKey); });
     mainList = orderedHabitsForPerson(STATE, personKey, 'main', mainList);
-    var weeklyList = habitsFor(weeklyHabits(STATE), personKey);
+    var weeklyList = habitsFor(weeklyHabits(STATE), personKey).filter(function(h){ return !habitRetiredOnDate(h, wKey); });
     weeklyList = orderedHabitsForPerson(STATE, personKey, 'weekly', weeklyList);
-    var monthlyList = habitsFor(monthlyHabits(STATE), personKey);
+    var monthlyList = habitsFor(monthlyHabits(STATE), personKey).filter(function(h){ return !habitRetiredOnDate(h, mKey); });
     monthlyList = orderedHabitsForPerson(STATE, personKey, 'monthly', monthlyList);
+
+    // Weekly/monthly goals don't contribute to the "today" count (that's
+    // daily-cadence only — see pointsForDay/isDailyCadence), so a weekly
+    // check-off was previously invisible on this page: the tile flipped to
+    // "done" but no number here ever moved, even though the point was
+    // correctly credited on the Home leaderboard's "Week" total. Surface it
+    // right here instead of making people go check a different screen.
+    var dayPts = pointsForDay(STATE, dKey, personKey);
+    var weekBonusPts = weeklyList.length ? weeklyBonusPoints(STATE, wKey, personKey) : 0;
+    var monthBonusPts = monthlyList.length ? monthlyBonusPoints(STATE, mKey, personKey) : 0;
+    function ptLabel(n, suffix){ return '<b>' + n + '</b>pt' + (n === 1 ? '' : 's') + ' ' + suffix; }
+    var ptParts = [ptLabel(dayPts, isToday ? 'today' : 'that day')];
+    if (weeklyList.length) ptParts.push(ptLabel(weekBonusPts, 'this week'));
+    if (monthlyList.length) ptParts.push(ptLabel(monthBonusPts, 'this month'));
 
     var html = '';
     html += '<button type="button" class="back-link" data-go-home>&larr; Switch profile</button>';
     html += '<div class="header-row"><div>' +
       '<div class="eyebrow">' + (isToday ? 'Today' : shortDate(dKey)) + '</div>' +
-      '<h1><span class="person-dot" style="background:var(' + accentVar + '); display:inline-block; width:14px; height:14px; margin-right:8px;"></span>' + esc(person.name) + '</h1></div>' +
-      '<div class="streak"><b>' + pointsForDay(STATE, dKey, personKey) + '</b>pt' + (pointsForDay(STATE, dKey, personKey)===1?'':'s') + ' ' + (isToday ? 'today' : 'that day') + '</div></div>';
+      '<h1>' + avatarHtml(person, accentVar, 'avatar-lg') + esc(person.name) + '</h1></div>' +
+      '<div class="streak">' + ptParts.join(' &nbsp;&middot;&nbsp; ') + '</div></div>';
 
     html += '<div class="date-nav">' +
       '<button type="button" class="date-nav-btn" data-nav-day="-1"' + (dKey <= earliestNavigableKey() ? ' disabled' : '') + ' title="Previous day">&larr;</button>' +
@@ -1603,7 +1908,7 @@
       if (pendingHabit){
         html += '<div class="confirm-overlay" data-confirm-overlay>' +
           '<div class="confirm-box">' +
-          '<p class="confirm-text">Remove <b>' + esc(pendingHabit.name) + '</b> from the tracker?</p>' +
+          '<p class="confirm-text">Remove <b>' + esc(pendingHabit.name) + '</b> from the tracker? It’ll disappear from today onward — your past history and points for it stay exactly as they are.</p>' +
           '<div class="confirm-actions">' +
           '<button type="button" class="confirm-cancel" data-confirm-cancel>Cancel</button>' +
           '<button type="button" class="confirm-remove" data-confirm-remove>Remove</button>' +
@@ -1798,7 +2103,7 @@
         var scopeLabel = t.scope === 'both' ? 'Both of you' : ((personByKey(STATE, t.scope) || {}).name || t.scope);
         var activeCount = t.habitIds.filter(function(id){
           var h = STATE.habits.find(function(hh){ return hh.id === id; });
-          return h && !h.archived;
+          return h && !habitRetiredOnDate(h, todayKey());
         }).length;
         var isFullyActive = t.habitIds.length > 0 && activeCount === t.habitIds.length;
         html += '<div class="tracker-row"><div class="tracker-info">';
@@ -1896,6 +2201,11 @@
     var c = getCell(STATE, bucketKey, h.id, personKey);
     var noteKey = h.id + ':' + personKey;
     var label = cadenceLabel(h);
+    // Weekly/monthly tiles don't bump the "today" counter when checked off,
+    // so show what they're worth right on the tile — otherwise the only
+    // feedback is the pill flipping to "done" with no visible point tally.
+    var pts = h.points || 1;
+    if (mode === 'weekly' || mode === 'monthly') label = (label ? label + ' · ' : '') + pts + ' pt' + (pts === 1 ? '' : 's');
     var nameHtml = esc(displayName(h, bucketKey)) + (label ? ' <span style="color:var(--text-muted); font-weight:400; font-size:11px;">(' + label + ')</span>' : '');
     var html = '<div class="task" data-drag-id="' + h.id + '">';
     html += '<div class="task-row">' +
@@ -1948,6 +2258,16 @@
 
     app.querySelectorAll('[data-enter-person]').forEach(function(btn){
       btn.addEventListener('click', function(){ enterPerson(btn.getAttribute('data-enter-person')); });
+    });
+
+    app.querySelectorAll('[data-avatar-upload]').forEach(function(input){
+      input.addEventListener('click', function(e){ e.stopPropagation(); });
+      input.addEventListener('change', function(){
+        var key = input.getAttribute('data-avatar-upload');
+        var file = input.files && input.files[0];
+        if (!file) return;
+        readAvatarFile(file, function(dataUrl){ if (dataUrl) setAvatar(key, dataUrl); });
+      });
     });
 
     app.querySelectorAll('[data-nav-day]').forEach(function(btn){
